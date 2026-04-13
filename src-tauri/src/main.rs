@@ -18,41 +18,53 @@ struct AppState {
 #[tauri::command]
 fn get_todos(state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
-    QueryAdapter::new(db.conn()).get_all_todos()
+    QueryAdapter::from(db.conn())
+        .get_all_todos()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn add_todo(title: String, state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
-        let repo = RepoAdapter::new(tx);
+        let repo = RepoAdapter::from(tx);
         TaskCommands::new(&repo).add(&title)
-    })?;
-    QueryAdapter::new(db.conn()).get_all_todos()
+    })
+    .map_err(|e| e.to_string())?;
+    QueryAdapter::from(db.conn())
+        .get_all_todos()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn toggle_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
-        let repo = RepoAdapter::new(tx);
+        let repo = RepoAdapter::from(tx);
         TaskCommands::new(&repo).toggle(id)
-    })?;
-    QueryAdapter::new(db.conn()).get_all_todos()
+    })
+    .map_err(|e| e.to_string())?;
+    QueryAdapter::from(db.conn())
+        .get_all_todos()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn delete_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
-        let repo = RepoAdapter::new(tx);
+        let repo = RepoAdapter::from(tx);
         TaskCommands::new(&repo).delete(id)
-    })?;
-    QueryAdapter::new(db.conn()).get_all_todos()
+    })
+    .map_err(|e| e.to_string())?;
+    QueryAdapter::from(db.conn())
+        .get_all_todos()
+        .map_err(|e| e.to_string())
 }
 
 fn main() {
     let db = Db::open("../db.sqlite").expect("Failed to initialize database");
+    db.migrate().expect("Failed to migrate database");
 
     tauri::Builder::default()
         .manage(AppState { db: Mutex::new(db) })
