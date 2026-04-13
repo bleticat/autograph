@@ -1,6 +1,6 @@
+pub mod adapters;
 pub mod commands;
 pub mod ports;
-pub mod sqlite;
 
 use serde::{Deserialize, Serialize};
 

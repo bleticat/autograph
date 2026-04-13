@@ -1,13 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    Database, SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Database, RustqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
     Todo,
 };
 use std::sync::Mutex;
 use tauri::State;
 
-type Db = SqliteDatabase;
+type Db = RustqliteDatabase;
 type QueryAdapter<'a> = SqliteTaskQueries<'a>;
 type RepoAdapter<'a> = SqliteTodoRepository<'a>;
 

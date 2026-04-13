@@ -1,9 +1,9 @@
 use autograph_core::{
-    Database, SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Database, RustqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
 };
 
-fn fresh_db() -> SqliteDatabase {
-    let db = SqliteDatabase::open(":memory:").expect("failed to create in-memory db");
+fn fresh_db() -> RustqliteDatabase {
+    let db = RustqliteDatabase::open(":memory:").expect("failed to create in-memory db");
     db.migrate().expect("failed to run migrations");
     db
 }
