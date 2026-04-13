@@ -1,45 +1,47 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use autograph_core::{Database, Todo};
+use autograph_core::{commands, queries, SqliteTodoRepository, Todo};
 use std::sync::Mutex;
 use tauri::State;
 
 struct AppState {
-    db: Mutex<Database>,
+    repo: Mutex<SqliteTodoRepository>,
 }
 
 #[tauri::command]
-fn get_todos(state: State<AppState>) -> Vec<Todo> {
-    let db = state.db.lock().unwrap();
-    db.get_all().unwrap_or_default()
+fn get_todos(state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let repo = state.repo.lock().unwrap();
+    queries::get_all_todos(&*repo)
 }
 
 #[tauri::command]
-fn add_todo(title: String, state: State<AppState>) -> Vec<Todo> {
-    let db = state.db.lock().unwrap();
-    let _ = db.add(&title);
-    db.get_all().unwrap_or_default()
+fn add_todo(title: String, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let repo = state.repo.lock().unwrap();
+    commands::add_todo(&*repo, &title)?;
+    queries::get_all_todos(&*repo)
 }
 
 #[tauri::command]
-fn toggle_todo(id: i64, state: State<AppState>) -> Vec<Todo> {
-    let db = state.db.lock().unwrap();
-    let _ = db.toggle(id);
-    db.get_all().unwrap_or_default()
+fn toggle_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let repo = state.repo.lock().unwrap();
+    commands::toggle_todo(&*repo, id)?;
+    queries::get_all_todos(&*repo)
 }
 
 #[tauri::command]
-fn delete_todo(id: i64, state: State<AppState>) -> Vec<Todo> {
-    let db = state.db.lock().unwrap();
-    let _ = db.delete(id);
-    db.get_all().unwrap_or_default()
+fn delete_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let repo = state.repo.lock().unwrap();
+    commands::delete_todo(&*repo, id)?;
+    queries::get_all_todos(&*repo)
 }
 
 fn main() {
-    let db = Database::open("../db.sqlite").expect("Failed to initialize database");
+    let repo = SqliteTodoRepository::open("../db.sqlite").expect("Failed to initialize database");
 
     tauri::Builder::default()
-        .manage(AppState { db: Mutex::new(db) })
+        .manage(AppState {
+            repo: Mutex::new(repo),
+        })
         .invoke_handler(tauri::generate_handler![
             get_todos,
             add_todo,

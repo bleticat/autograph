@@ -1,36 +1,41 @@
+use crate::ports::TodoRepository;
 use crate::Todo;
-use rusqlite::{Connection, Result};
+use rusqlite::Connection;
 
-pub struct Database {
+pub struct SqliteTodoRepository {
     conn: Connection,
 }
 
-impl Database {
-    pub fn open(path: &str) -> Result<Self> {
-        let conn = Connection::open(path)?;
+impl SqliteTodoRepository {
+    pub fn open(path: &str) -> Result<Self, String> {
+        let conn = Connection::open(path).map_err(|e| e.to_string())?;
         Self::init(conn)
     }
 
-    pub fn in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory()?;
+    pub fn in_memory() -> Result<Self, String> {
+        let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         Self::init(conn)
     }
 
-    fn init(conn: Connection) -> Result<Self> {
+    fn init(conn: Connection) -> Result<Self, String> {
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS todos (
                 id    INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 completed INTEGER NOT NULL DEFAULT 0
             );",
-        )?;
+        )
+        .map_err(|e| e.to_string())?;
         Ok(Self { conn })
     }
+}
 
-    pub fn get_all(&self) -> Result<Vec<Todo>> {
+impl TodoRepository for SqliteTodoRepository {
+    fn get_all(&self) -> Result<Vec<Todo>, String> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, title, completed FROM todos ORDER BY id")?;
+            .prepare("SELECT id, title, completed FROM todos ORDER BY id")
+            .map_err(|e| e.to_string())?;
         let todos = stmt
             .query_map([], |row| {
                 Ok(Todo {
@@ -38,27 +43,34 @@ impl Database {
                     title: row.get(1)?,
                     completed: row.get::<_, i32>(2)? != 0,
                 })
-            })?
-            .collect::<Result<Vec<_>>>()?;
+            })
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
         Ok(todos)
     }
 
-    pub fn add(&self, title: &str) -> Result<()> {
+    fn add(&self, title: &str) -> Result<(), String> {
         self.conn
-            .execute("INSERT INTO todos (title) VALUES (?1)", [title])?;
+            .execute("INSERT INTO todos (title) VALUES (?1)", [title])
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    pub fn toggle(&self, id: i64) -> Result<()> {
-        self.conn.execute(
-            "UPDATE todos SET completed = NOT completed WHERE id = ?1",
-            [id],
-        )?;
+    fn toggle(&self, id: i64) -> Result<(), String> {
+        self.conn
+            .execute(
+                "UPDATE todos SET completed = NOT completed WHERE id = ?1",
+                [id],
+            )
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
-    pub fn delete(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM todos WHERE id = ?1", [id])?;
+    fn delete(&self, id: i64) -> Result<(), String> {
+        self.conn
+            .execute("DELETE FROM todos WHERE id = ?1", [id])
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 }
