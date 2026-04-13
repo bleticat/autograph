@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.autograph.app",
   "build": {
-    "beforeBuildCommand": "cd frontend && trunk build",
-    "beforeDevCommand": "cd frontend && trunk serve --port 1420",
+    "beforeBuildCommand": "cd ../frontend && npm run build",
+    "beforeDevCommand": "cd ../frontend && npm run dev",
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:1420"
   },
