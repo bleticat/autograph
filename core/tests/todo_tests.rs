@@ -1,5 +1,6 @@
 use autograph_core::{
-    SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Database, SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    TodoRepository,
 };
 
 fn fresh_db() -> SqliteDatabase {

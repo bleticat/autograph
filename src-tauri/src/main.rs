@@ -1,7 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries, Todo,
+    Database, SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Todo, TodoRepository,
 };
 use std::sync::Mutex;
 use tauri::State;

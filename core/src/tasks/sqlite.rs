@@ -6,13 +6,13 @@ pub struct SqliteTaskQueries<'a> {
     conn: &'a rusqlite::Connection,
 }
 
-impl<'a> SqliteTaskQueries<'a> {
-    pub fn new(conn: SqliteConnection<'a>) -> Self {
+impl<'a> TaskQueries for SqliteTaskQueries<'a> {
+    type Conn = SqliteConnection<'a>;
+
+    fn new(conn: SqliteConnection<'a>) -> Self {
         Self { conn: conn.0 }
     }
-}
 
-impl TaskQueries for SqliteTaskQueries<'_> {
     fn get_all_todos(&self) -> Result<Vec<Todo>, String> {
         let mut stmt = self
             .conn
@@ -37,13 +37,13 @@ pub struct SqliteTodoRepository<'a> {
     conn: &'a rusqlite::Connection,
 }
 
-impl<'a> SqliteTodoRepository<'a> {
-    pub fn new(tx: &'a SqliteTransaction<'_>) -> Self {
+impl<'a> TodoRepository for SqliteTodoRepository<'a> {
+    type Tx = SqliteTransaction<'a>;
+
+    fn new(tx: &SqliteTransaction<'a>) -> Self {
         Self { conn: tx.0 }
     }
-}
 
-impl TodoRepository for SqliteTodoRepository<'_> {
     fn add(&self, title: &str) -> Result<i64, String> {
         self.conn
             .execute("INSERT INTO todos (title) VALUES (?1)", [title])

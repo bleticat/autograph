@@ -1,11 +1,11 @@
 use super::ports::TodoRepository;
 
-pub struct TaskCommands<'a> {
-    tasks: &'a dyn TodoRepository,
+pub struct TaskCommands<'a, R: TodoRepository> {
+    tasks: &'a R,
 }
 
-impl<'a> TaskCommands<'a> {
-    pub fn new(tasks: &'a dyn TodoRepository) -> Self {
+impl<'a, R: TodoRepository> TaskCommands<'a, R> {
+    pub fn new(tasks: &'a R) -> Self {
         Self { tasks }
     }
 

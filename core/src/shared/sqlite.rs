@@ -1,19 +1,28 @@
-use super::ports::{Database, Transaction};
+use super::ports::{Connection, Database, Transaction};
 
 pub struct SqliteConnection<'a>(pub(crate) &'a rusqlite::Connection);
 
+impl Connection for SqliteConnection<'_> {}
+
 pub struct SqliteTransaction<'a>(pub(crate) &'a rusqlite::Connection);
 
-impl Transaction for SqliteTransaction<'_> {}
+impl<'a> Transaction for SqliteTransaction<'a> {
+    type Conn = SqliteConnection<'a>;
+
+    fn new(conn: &SqliteConnection<'a>) -> Self {
+        Self(conn.0)
+    }
+}
 
 pub struct SqliteDatabase {
     conn: rusqlite::Connection,
 }
 
-impl Database for SqliteDatabase {}
+impl Database for SqliteDatabase {
+    type Conn<'a> = SqliteConnection<'a>;
+    type Tx<'a> = SqliteTransaction<'a>;
 
-impl SqliteDatabase {
-    pub fn open(path: &str) -> Result<Self, String> {
+    fn open(path: &str) -> Result<Self, String> {
         let conn = rusqlite::Connection::open(path).map_err(|e| e.to_string())?;
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS todos (
@@ -26,11 +35,11 @@ impl SqliteDatabase {
         Ok(Self { conn })
     }
 
-    pub fn conn(&self) -> SqliteConnection<'_> {
+    fn conn(&self) -> SqliteConnection<'_> {
         SqliteConnection(&self.conn)
     }
 
-    pub fn transaction<T>(
+    fn transaction<T>(
         &self,
         f: impl FnOnce(&SqliteTransaction) -> Result<T, String>,
     ) -> Result<T, String> {
