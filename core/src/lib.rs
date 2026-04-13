@@ -1,16 +1,7 @@
-pub mod commands;
-mod db;
-pub mod ports;
-pub mod queries;
+pub mod shared;
+pub mod tasks;
 
-pub use db::SqliteTodoRepository;
-pub use ports::TodoRepository;
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Todo {
-    pub id: i64,
-    pub title: String,
-    pub completed: bool,
-}
+pub use shared::ports::{Database, Transaction};
+pub use shared::sqlite::{SqliteDatabase, SqliteTransaction};
+pub use tasks::sqlite::{SqliteTaskQueries, SqliteTodoRepository};
+pub use tasks::{TaskCommands, TaskQueries, Todo, TodoRepository};

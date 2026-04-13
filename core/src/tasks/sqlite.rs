@@ -1,37 +1,19 @@
-use crate::ports::TodoRepository;
-use crate::Todo;
-use rusqlite::Connection;
+use super::ports::{TaskQueries, TodoRepository};
+use super::Todo;
+use crate::shared::sqlite::{SqliteConnection, SqliteTransaction};
 
-pub struct SqliteTodoRepository {
-    conn: Connection,
+pub struct SqliteTaskQueries<'a> {
+    conn: &'a rusqlite::Connection,
 }
 
-impl SqliteTodoRepository {
-    pub fn open(path: &str) -> Result<Self, String> {
-        let conn = Connection::open(path).map_err(|e| e.to_string())?;
-        Self::init(conn)
-    }
-
-    pub fn in_memory() -> Result<Self, String> {
-        let conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
-        Self::init(conn)
-    }
-
-    fn init(conn: Connection) -> Result<Self, String> {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS todos (
-                id    INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                completed INTEGER NOT NULL DEFAULT 0
-            );",
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(Self { conn })
+impl<'a> SqliteTaskQueries<'a> {
+    pub fn new(conn: SqliteConnection<'a>) -> Self {
+        Self { conn: conn.0 }
     }
 }
 
-impl TodoRepository for SqliteTodoRepository {
-    fn get_all(&self) -> Result<Vec<Todo>, String> {
+impl TaskQueries for SqliteTaskQueries<'_> {
+    fn get_all_todos(&self) -> Result<Vec<Todo>, String> {
         let mut stmt = self
             .conn
             .prepare("SELECT id, title, completed FROM todos ORDER BY id")
@@ -49,12 +31,24 @@ impl TodoRepository for SqliteTodoRepository {
             .map_err(|e| e.to_string())?;
         Ok(todos)
     }
+}
 
-    fn add(&self, title: &str) -> Result<(), String> {
+pub struct SqliteTodoRepository<'a> {
+    conn: &'a rusqlite::Connection,
+}
+
+impl<'a> SqliteTodoRepository<'a> {
+    pub fn new(tx: &'a SqliteTransaction<'_>) -> Self {
+        Self { conn: tx.0 }
+    }
+}
+
+impl TodoRepository for SqliteTodoRepository<'_> {
+    fn add(&self, title: &str) -> Result<i64, String> {
         self.conn
             .execute("INSERT INTO todos (title) VALUES (?1)", [title])
             .map_err(|e| e.to_string())?;
-        Ok(())
+        Ok(self.conn.last_insert_rowid())
     }
 
     fn toggle(&self, id: i64) -> Result<(), String> {

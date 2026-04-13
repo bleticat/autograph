@@ -1,21 +1,27 @@
-use autograph_core::{commands, queries, SqliteTodoRepository};
+use autograph_core::{
+    SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+};
 
-fn fresh_repo() -> SqliteTodoRepository {
-    SqliteTodoRepository::in_memory().expect("failed to create in-memory repo")
+fn fresh_db() -> SqliteDatabase {
+    SqliteDatabase::open(":memory:").expect("failed to create in-memory db")
 }
 
 #[test]
 fn empty_database_returns_no_todos() {
-    let repo = fresh_repo();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    let db = fresh_db();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert!(todos.is_empty());
 }
 
 #[test]
 fn add_single_todo() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "buy milk").unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("buy milk")
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "buy milk");
     assert!(!todos[0].completed);
@@ -23,11 +29,23 @@ fn add_single_todo() {
 
 #[test]
 fn add_multiple_todos_preserves_order() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "first").unwrap();
-    commands::add_todo(&repo, "second").unwrap();
-    commands::add_todo(&repo, "third").unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("first")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("second")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("third")
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert_eq!(todos.len(), 3);
     assert_eq!(todos[0].title, "first");
     assert_eq!(todos[1].title, "second");
@@ -36,97 +54,190 @@ fn add_multiple_todos_preserves_order() {
 
 #[test]
 fn toggle_marks_completed() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "task").unwrap();
-    let id = queries::get_all_todos(&repo).unwrap()[0].id;
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("task")
+    })
+    .unwrap();
+    let id = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap()[0].id;
 
-    commands::toggle_todo(&repo, id).unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).toggle(id)
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert!(todos[0].completed);
 }
 
 #[test]
 fn toggle_twice_restores_incomplete() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "task").unwrap();
-    let id = queries::get_all_todos(&repo).unwrap()[0].id;
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("task")
+    })
+    .unwrap();
+    let id = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap()[0].id;
 
-    commands::toggle_todo(&repo, id).unwrap();
-    commands::toggle_todo(&repo, id).unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).toggle(id)
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).toggle(id)
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert!(!todos[0].completed);
 }
 
 #[test]
 fn delete_removes_todo() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "to delete").unwrap();
-    let id = queries::get_all_todos(&repo).unwrap()[0].id;
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("to delete")
+    })
+    .unwrap();
+    let id = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap()[0].id;
 
-    commands::delete_todo(&repo, id).unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).delete(id)
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert!(todos.is_empty());
 }
 
 #[test]
 fn delete_only_target_todo() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "keep").unwrap();
-    commands::add_todo(&repo, "remove").unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("keep")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("remove")
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     let remove_id = todos[1].id;
 
-    commands::delete_todo(&repo, remove_id).unwrap();
-    let todos = queries::get_all_todos(&repo).unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).delete(remove_id)
+    })
+    .unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "keep");
 }
 
 #[test]
 fn toggle_nonexistent_id_is_noop() {
-    let repo = fresh_repo();
-    commands::toggle_todo(&repo, 9999).unwrap();
-    assert!(queries::get_all_todos(&repo).unwrap().is_empty());
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).toggle(9999)
+    })
+    .unwrap();
+    assert!(SqliteTaskQueries::new(db.conn())
+        .get_all_todos()
+        .unwrap()
+        .is_empty());
 }
 
 #[test]
 fn delete_nonexistent_id_is_noop() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "still here").unwrap();
-    commands::delete_todo(&repo, 9999).unwrap();
-    assert_eq!(queries::get_all_todos(&repo).unwrap().len(), 1);
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("still here")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).delete(9999)
+    })
+    .unwrap();
+    assert_eq!(
+        SqliteTaskQueries::new(db.conn())
+            .get_all_todos()
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[test]
 fn ids_are_unique_after_delete() {
-    let repo = fresh_repo();
-    commands::add_todo(&repo, "first").unwrap();
-    let first_id = queries::get_all_todos(&repo).unwrap()[0].id;
-    commands::delete_todo(&repo, first_id).unwrap();
+    let db = fresh_db();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("first")
+    })
+    .unwrap();
+    let first_id = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap()[0].id;
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).delete(first_id)
+    })
+    .unwrap();
 
-    commands::add_todo(&repo, "second").unwrap();
-    let second_id = queries::get_all_todos(&repo).unwrap()[0].id;
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("second")
+    })
+    .unwrap();
+    let second_id = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap()[0].id;
     assert_ne!(first_id, second_id);
 }
 
 #[test]
 fn full_workflow() {
-    let repo = fresh_repo();
+    let db = fresh_db();
 
     // Add a few todos
-    commands::add_todo(&repo, "buy groceries").unwrap();
-    commands::add_todo(&repo, "write tests").unwrap();
-    commands::add_todo(&repo, "deploy app").unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("buy groceries")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("write tests")
+    })
+    .unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).add("deploy app")
+    })
+    .unwrap();
 
     // Complete one
-    let todos = queries::get_all_todos(&repo).unwrap();
-    commands::toggle_todo(&repo, todos[1].id).unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).toggle(todos[1].id)
+    })
+    .unwrap();
 
     // Delete one
-    commands::delete_todo(&repo, todos[2].id).unwrap();
+    db.transaction(|tx| {
+        let repo = SqliteTodoRepository::new(tx);
+        TaskCommands::new(&repo).delete(todos[2].id)
+    })
+    .unwrap();
 
     // Verify final state
-    let todos = queries::get_all_todos(&repo).unwrap();
+    let todos = SqliteTaskQueries::new(db.conn()).get_all_todos().unwrap();
     assert_eq!(todos.len(), 2);
     assert_eq!(todos[0].title, "buy groceries");
     assert!(!todos[0].completed);
