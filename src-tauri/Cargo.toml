@@ -1,0 +1,16 @@
+[package]
+name = "autograph-tauri"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "autograph"
+path = "src/main.rs"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+autograph-core = { path = "../core" }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

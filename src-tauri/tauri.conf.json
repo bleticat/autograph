@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AdrienMusic/tauri-v2/main/crates/tauri-cli/schema.json",
+  "productName": "Autograph",
+  "version": "0.1.0",
+  "identifier": "com.autograph.app",
+  "build": {
+    "beforeBuildCommand": "cd frontend && trunk build",
+    "beforeDevCommand": "cd frontend && trunk serve --port 1420",
+    "frontendDist": "../frontend/dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Autograph",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  }
+}
