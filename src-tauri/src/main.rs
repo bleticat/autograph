@@ -2,7 +2,7 @@
 
 use autograph_core::{
     Database, SqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
-    Todo, TodoRepository,
+    Todo,
 };
 use std::sync::Mutex;
 use tauri::State;
