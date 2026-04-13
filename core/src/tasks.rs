@@ -10,6 +10,3 @@ pub struct Todo {
     pub title: String,
     pub completed: bool,
 }
-
-pub use commands::TaskCommands;
-pub use ports::{TaskQueries, TodoRepository};

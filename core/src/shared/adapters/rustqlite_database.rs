@@ -1,8 +1,6 @@
 use crate::shared::error::AppErr;
-use crate::shared::ports::{Connection, Database, Transaction};
+use crate::shared::ports::database::{Connection, Database, Transaction};
 
-/// A lightweight read-only handle wrapping a borrowed `rusqlite::Connection`.
-/// Used for query-side operations; see [`SqliteTransaction`] for the write side.
 #[derive(Copy, Clone)]
 pub struct RustqliteConnection<'a>(&'a rusqlite::Connection);
 
@@ -14,9 +12,6 @@ impl<'a> RustqliteConnection<'a> {
 
 impl Connection for RustqliteConnection<'_> {}
 
-/// A lightweight write-capable handle wrapping a borrowed `rusqlite::Connection`
-/// that is already inside an open transaction.
-/// Used for mutation operations; see [`SqliteConnection`] for the read side.
 #[derive(Copy, Clone)]
 pub struct RustqliteTransaction<'a>(&'a rusqlite::Connection);
 
@@ -35,8 +30,6 @@ pub struct RustqliteDatabase {
 }
 
 impl RustqliteDatabase {
-    /// Create all required tables if they do not already exist.
-    /// Call this once after [`SqliteDatabase::open`] before using the database.
     pub fn migrate(&self) -> Result<(), AppErr> {
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS todos (

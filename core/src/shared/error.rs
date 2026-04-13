@@ -1,6 +1,5 @@
 use std::fmt;
 
-/// Crate-level error type for all fallible operations in `autograph-core`.
 #[derive(Debug)]
 pub enum AppErr {
     Db(rusqlite::Error),
