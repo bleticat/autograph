@@ -1,5 +1,5 @@
 use super::Todo;
-use crate::error::CoreError;
+use crate::shared::error::AppErr;
 use crate::shared::ports::{Connection, Transaction};
 
 /// A repository for mutating todos.
@@ -11,13 +11,13 @@ use crate::shared::ports::{Connection, Transaction};
 /// create the repository from its associated transaction type.
 pub trait TodoRepository: From<Self::Tx> {
     type Tx: Transaction;
-    fn add(&self, title: &str) -> Result<i64, CoreError>;
+    fn add(&self, title: &str) -> Result<i64, AppErr>;
     /// Toggles the `completed` flag of the todo with the given `id`.
     /// If no todo with that id exists this is a no-op (silently succeeds).
-    fn toggle(&self, id: i64) -> Result<(), CoreError>;
+    fn toggle(&self, id: i64) -> Result<(), AppErr>;
     /// Deletes the todo with the given `id`.
     /// If no todo with that id exists this is a no-op (silently succeeds).
-    fn delete(&self, id: i64) -> Result<(), CoreError>;
+    fn delete(&self, id: i64) -> Result<(), AppErr>;
 }
 
 /// A read-only query object for fetching todos.
@@ -26,5 +26,5 @@ pub trait TodoRepository: From<Self::Tx> {
 /// same idiomatic constructor convention as [`TodoRepository`].
 pub trait TaskQueries: From<Self::Conn> {
     type Conn: Connection;
-    fn get_all_todos(&self) -> Result<Vec<Todo>, CoreError>;
+    fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr>;
 }

@@ -1,5 +1,5 @@
 use super::ports::TodoRepository;
-use crate::error::CoreError;
+use crate::shared::error::AppErr;
 
 pub struct TaskCommands<'a, R: TodoRepository> {
     tasks: &'a R,
@@ -10,15 +10,15 @@ impl<'a, R: TodoRepository> TaskCommands<'a, R> {
         Self { tasks }
     }
 
-    pub fn add(&self, title: &str) -> Result<i64, CoreError> {
+    pub fn add(&self, title: &str) -> Result<i64, AppErr> {
         self.tasks.add(title)
     }
 
-    pub fn toggle(&self, id: i64) -> Result<(), CoreError> {
+    pub fn toggle(&self, id: i64) -> Result<(), AppErr> {
         self.tasks.toggle(id)
     }
 
-    pub fn delete(&self, id: i64) -> Result<(), CoreError> {
+    pub fn delete(&self, id: i64) -> Result<(), AppErr> {
         self.tasks.delete(id)
     }
 }

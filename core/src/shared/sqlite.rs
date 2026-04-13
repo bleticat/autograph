@@ -1,5 +1,5 @@
 use super::ports::{Connection, Database, Transaction};
-use crate::error::CoreError;
+use crate::shared::error::AppErr;
 
 /// A lightweight read-only handle wrapping a borrowed `rusqlite::Connection`.
 /// Used for query-side operations; see [`SqliteTransaction`] for the write side.
@@ -37,7 +37,7 @@ pub struct SqliteDatabase {
 impl SqliteDatabase {
     /// Create all required tables if they do not already exist.
     /// Call this once after [`SqliteDatabase::open`] before using the database.
-    pub fn migrate(&self) -> Result<(), CoreError> {
+    pub fn migrate(&self) -> Result<(), AppErr> {
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS todos (
                 id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +53,7 @@ impl Database for SqliteDatabase {
     type Conn<'a> = SqliteConnection<'a>;
     type Tx<'a> = SqliteTransaction<'a>;
 
-    fn open(path: &str) -> Result<Self, CoreError> {
+    fn open(path: &str) -> Result<Self, AppErr> {
         let conn = rusqlite::Connection::open(path)?;
         Ok(Self { conn })
     }
@@ -64,8 +64,8 @@ impl Database for SqliteDatabase {
 
     fn transaction<T>(
         &self,
-        f: impl FnOnce(SqliteTransaction<'_>) -> Result<T, CoreError>,
-    ) -> Result<T, CoreError> {
+        f: impl FnOnce(SqliteTransaction<'_>) -> Result<T, AppErr>,
+    ) -> Result<T, AppErr> {
         self.conn.execute_batch("BEGIN")?;
         let tx = SqliteTransaction(&self.conn);
         match f(tx) {

@@ -1,8 +1,7 @@
-pub mod error;
 pub mod shared;
 pub mod tasks;
 
-pub use error::CoreError;
+pub use shared::error::AppErr;
 pub use shared::ports::{Connection, Database, Transaction};
 pub use shared::sqlite::{SqliteDatabase, SqliteTransaction};
 pub use tasks::sqlite::{SqliteTaskQueries, SqliteTodoRepository};

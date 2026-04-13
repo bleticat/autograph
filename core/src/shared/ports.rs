@@ -1,4 +1,4 @@
-use crate::error::CoreError;
+use crate::shared::error::AppErr;
 
 /// A read-only handle to the underlying database connection.
 /// Operations that only read data (queries) run through a `Connection`.
@@ -19,12 +19,12 @@ pub trait Database {
     where
         Self: 'a;
 
-    fn open(path: &str) -> Result<Self, CoreError>
+    fn open(path: &str) -> Result<Self, AppErr>
     where
         Self: Sized;
     fn conn(&self) -> Self::Conn<'_>;
     fn transaction<T>(
         &self,
-        f: impl FnOnce(Self::Tx<'_>) -> Result<T, CoreError>,
-    ) -> Result<T, CoreError>;
+        f: impl FnOnce(Self::Tx<'_>) -> Result<T, AppErr>,
+    ) -> Result<T, AppErr>;
 }
