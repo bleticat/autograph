@@ -3,4 +3,3 @@
 /**/dist
 frontend/node_modules
 .DS_Store
-/src-tauri/autograph_todos.db
