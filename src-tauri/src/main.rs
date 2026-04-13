@@ -36,7 +36,7 @@ fn delete_todo(id: i64, state: State<AppState>) -> Vec<Todo> {
 }
 
 fn main() {
-    let db = Database::open("autograph_todos.db").expect("Failed to initialize database");
+    let db = Database::open("../db.sqlite").expect("Failed to initialize database");
 
     tauri::Builder::default()
         .manage(AppState { db: Mutex::new(db) })
