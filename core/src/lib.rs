@@ -1,6 +1,13 @@
+pub mod projects;
 pub mod shared;
 pub mod tasks;
 
+pub use projects::adapters::rustqlite_project_queries::SqliteProjectQueries;
+pub use projects::adapters::rustqlite_project_repo::SqliteProjectRepository;
+pub use projects::commands::ProjectCommands;
+pub use projects::ports::project_queries::ProjectQueries;
+pub use projects::ports::project_repo::ProjectRepository;
+pub use projects::Project;
 pub use shared::adapters::rustqlite_database::{RustqliteDatabase, RustqliteTransaction};
 pub use shared::error::AppErr;
 pub use shared::ports::database::{Connection, Database, Transaction};

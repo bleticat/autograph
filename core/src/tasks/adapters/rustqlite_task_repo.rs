@@ -21,6 +21,14 @@ impl<'a> TodoRepository for SqliteTodoRepository<'a> {
         Ok(self.conn.last_insert_rowid())
     }
 
+    fn add_with_project(&self, title: &str, project_id: i64) -> Result<i64, AppErr> {
+        self.conn.execute(
+            "INSERT INTO todos (title, project_id) VALUES (?1, ?2)",
+            rusqlite::params![title, project_id],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
     fn toggle(&self, id: i64) -> Result<(), AppErr> {
         self.conn.execute(
             "UPDATE todos SET completed = 1 - completed WHERE id = ?1",
