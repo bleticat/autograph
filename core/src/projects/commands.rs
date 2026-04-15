@@ -1,4 +1,5 @@
 use crate::projects::ports::project_repo::ProjectRepository;
+use crate::projects::Project;
 use crate::shared::error::AppErr;
 
 pub struct ProjectCommands<'a, R: ProjectRepository> {
@@ -11,6 +12,9 @@ impl<'a, R: ProjectRepository> ProjectCommands<'a, R> {
     }
 
     pub fn add(&self, title: &str) -> Result<i64, AppErr> {
-        self.projects.add(title)
+        self.projects.save(&Project {
+            id: 0,
+            title: title.to_owned(),
+        })
     }
 }
