@@ -47,9 +47,8 @@
     projects = await invoke("add_project", { title });
   }
 
-  async function selectProject(id) {
+  function selectProject(id) {
     selectedProjectId = id;
-    await loadTodos();
   }
 
   function handleTodoKeydown(e) {
@@ -62,6 +61,9 @@
 
   $effect(() => {
     loadProjects();
+  });
+
+  $effect(() => {
     loadTodos();
   });
 </script>
