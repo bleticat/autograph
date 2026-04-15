@@ -1,7 +1,4 @@
-use crate::shared::error::AppErr;
-use crate::shared::ports::database::Transaction;
+use crate::projects::Project;
+use crate::shared::ports::repository::Repository;
 
-pub trait ProjectRepository: From<Self::Tx> {
-    type Tx: Transaction;
-    fn add(&self, title: &str) -> Result<i64, AppErr>;
-}
+pub trait ProjectRepository: Repository<Project> {}

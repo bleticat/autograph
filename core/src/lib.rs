@@ -11,6 +11,7 @@ pub use projects::Project;
 pub use shared::adapters::rustqlite_database::{RustqliteDatabase, RustqliteTransaction};
 pub use shared::error::AppErr;
 pub use shared::ports::database::{Connection, Database, Transaction};
+pub use shared::ports::repository::Repository;
 pub use tasks::adapters::rustqlite_task_queries::SqliteTaskQueries;
 pub use tasks::adapters::rustqlite_task_repo::SqliteTodoRepository;
 pub use tasks::commands::TaskCommands;

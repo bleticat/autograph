@@ -19,7 +19,7 @@ impl<'a> ProjectQueries for SqliteProjectQueries<'a> {
     fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, title FROM projects ORDER BY id")?;
+            .prepare("SELECT id, title FROM projects ORDER BY rowid")?;
         let projects = stmt
             .query_map([], |row| {
                 Ok(Project {

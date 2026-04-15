@@ -1,6 +1,7 @@
 use autograph_core::{
     Database, RustqliteDatabase, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
 };
+use uuid::Uuid;
 
 fn fresh_db() -> RustqliteDatabase {
     let db = RustqliteDatabase::open(":memory:").expect("failed to create in-memory db");
@@ -147,7 +148,7 @@ fn toggle_nonexistent_id_is_noop() {
     let db = fresh_db();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).toggle(9999)
+        TaskCommands::new(&repo).toggle(Uuid::new_v4())
     })
     .unwrap();
     assert!(SqliteTaskQueries::from(db.conn())
@@ -166,7 +167,7 @@ fn delete_nonexistent_id_is_noop() {
     .unwrap();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).delete(9999)
+        TaskCommands::new(&repo).delete(Uuid::new_v4())
     })
     .unwrap();
     assert_eq!(

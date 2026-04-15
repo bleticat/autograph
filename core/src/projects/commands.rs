@@ -1,5 +1,7 @@
 use crate::projects::ports::project_repo::ProjectRepository;
+use crate::projects::Project;
 use crate::shared::error::AppErr;
+use uuid::Uuid;
 
 pub struct ProjectCommands<'a, R: ProjectRepository> {
     projects: &'a R,
@@ -10,7 +12,10 @@ impl<'a, R: ProjectRepository> ProjectCommands<'a, R> {
         Self { projects }
     }
 
-    pub fn add(&self, title: &str) -> Result<i64, AppErr> {
-        self.projects.add(title)
+    pub fn add(&self, title: &str) -> Result<Uuid, AppErr> {
+        self.projects.save(&Project {
+            id: Uuid::nil(),
+            title: title.to_owned(),
+        })
     }
 }

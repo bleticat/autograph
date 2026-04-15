@@ -88,6 +88,7 @@ version = "0.1.0"
 dependencies = [
  "rusqlite",
  "serde",
+ "uuid",
 ]
 
 [[package]]
@@ -2743,6 +2744,7 @@ dependencies = [
  "hashlink",
  "libsqlite3-sys",
  "smallvec",
+ "uuid",
 ]
 
 [[package]]

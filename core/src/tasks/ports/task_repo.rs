@@ -1,10 +1,4 @@
-use crate::shared::error::AppErr;
-use crate::shared::ports::database::Transaction;
+use crate::shared::ports::repository::Repository;
+use crate::tasks::Todo;
 
-pub trait TodoRepository: From<Self::Tx> {
-    type Tx: Transaction;
-    fn add(&self, title: &str) -> Result<i64, AppErr>;
-    fn add_with_project(&self, title: &str, project_id: i64) -> Result<i64, AppErr>;
-    fn toggle(&self, id: i64) -> Result<(), AppErr>;
-    fn delete(&self, id: i64) -> Result<(), AppErr>;
-}
+pub trait TodoRepository: Repository<Todo> {}
