@@ -43,4 +43,10 @@ impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
             Ok(project.id)
         }
     }
+
+    fn delete(&self, id: i64) -> Result<(), AppErr> {
+        self.conn
+            .execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        Ok(())
+    }
 }

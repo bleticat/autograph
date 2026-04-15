@@ -6,4 +6,5 @@ pub trait ProjectRepository: From<Self::Tx> {
     type Tx: Transaction;
     fn get(&self, id: i64) -> Result<Option<Project>, AppErr>;
     fn save(&self, project: &Project) -> Result<i64, AppErr>;
+    fn delete(&self, id: i64) -> Result<(), AppErr>;
 }

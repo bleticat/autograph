@@ -1,6 +1,6 @@
 use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
 use crate::shared::error::AppErr;
-use crate::tasks::ports::task_repo::{TodoRepository, TodoSave};
+use crate::tasks::ports::task_repo::TodoRepository;
 use crate::tasks::Todo;
 
 pub struct SqliteTodoRepository<'a> {
@@ -32,27 +32,24 @@ impl<'a> TodoRepository for SqliteTodoRepository<'a> {
         }
     }
 
-    fn save(&self, change: TodoSave) -> Result<i64, AppErr> {
-        match change {
-            TodoSave::Upsert(todo) => {
-                if todo.id == 0 {
-                    self.conn.execute(
-                        "INSERT INTO todos (title, completed, project_id) VALUES (?1, ?2, ?3)",
-                        rusqlite::params![todo.title, todo.completed as i32, todo.project_id],
-                    )?;
-                    Ok(self.conn.last_insert_rowid())
-                } else {
-                    self.conn.execute(
-                        "UPDATE todos SET title = ?1, completed = ?2, project_id = ?3 WHERE id = ?4",
-                        rusqlite::params![todo.title, todo.completed as i32, todo.project_id, todo.id],
-                    )?;
-                    Ok(todo.id)
-                }
-            }
-            TodoSave::Delete(id) => {
-                self.conn.execute("DELETE FROM todos WHERE id = ?1", [id])?;
-                Ok(id)
-            }
+    fn save(&self, todo: &Todo) -> Result<i64, AppErr> {
+        if todo.id == 0 {
+            self.conn.execute(
+                "INSERT INTO todos (title, completed, project_id) VALUES (?1, ?2, ?3)",
+                rusqlite::params![todo.title, todo.completed as i32, todo.project_id],
+            )?;
+            Ok(self.conn.last_insert_rowid())
+        } else {
+            self.conn.execute(
+                "UPDATE todos SET title = ?1, completed = ?2, project_id = ?3 WHERE id = ?4",
+                rusqlite::params![todo.title, todo.completed as i32, todo.project_id, todo.id],
+            )?;
+            Ok(todo.id)
         }
+    }
+
+    fn delete(&self, id: i64) -> Result<(), AppErr> {
+        self.conn.execute("DELETE FROM todos WHERE id = ?1", [id])?;
+        Ok(())
     }
 }
