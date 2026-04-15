@@ -1,6 +1,7 @@
 use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
+use crate::tasks::ports::task_repo::TodoRepository;
 use crate::tasks::Todo;
 use uuid::Uuid;
 
@@ -14,7 +15,7 @@ impl<'a> From<RustqliteTransaction<'a>> for SqliteTodoRepository<'a> {
     }
 }
 
-impl<'a> Repository<Todo, Uuid> for SqliteTodoRepository<'a> {
+impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
     type Tx = RustqliteTransaction<'a>;
 
     fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
@@ -55,3 +56,5 @@ impl<'a> Repository<Todo, Uuid> for SqliteTodoRepository<'a> {
         Ok(())
     }
 }
+
+impl<'a> TodoRepository for SqliteTodoRepository<'a> {}
