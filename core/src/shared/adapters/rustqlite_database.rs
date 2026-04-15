@@ -47,7 +47,8 @@ impl Database for RustqliteDatabase {
     type Tx<'a> = RustqliteTransaction;
 
     fn open(path: &str) -> Result<Self, AppErr> {
-        let conn_str = if path == ":memory:" {
+        let is_memory = path == ":memory:";
+        let conn_str = if is_memory {
             "sqlite::memory:".to_owned()
         } else {
             format!("sqlite://{path}")
@@ -55,7 +56,7 @@ impl Database for RustqliteDatabase {
 
         let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
             .foreign_keys(true)
-            .create_if_missing(path != ":memory:");
+            .create_if_missing(!is_memory);
         let conn = block_on(sqlx::SqliteConnection::connect_with(&conn_options))?;
 
         Ok(Self {
@@ -71,9 +72,10 @@ impl Database for RustqliteDatabase {
         &self,
         f: impl FnOnce(RustqliteTransaction) -> Result<T, AppErr>,
     ) -> Result<T, AppErr> {
-        let mut conn = self.conn.borrow_mut();
-        block_on(sqlx::query("BEGIN").execute(&mut *conn))?;
-        drop(conn);
+        {
+            let mut conn = self.conn.borrow_mut();
+            block_on(sqlx::query("BEGIN").execute(&mut *conn))?;
+        }
 
         let tx = RustqliteTransaction(Rc::clone(&self.conn));
         match f(tx) {
