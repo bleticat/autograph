@@ -7,6 +7,7 @@ pub trait Transaction {
     type Conn: Connection;
 }
 
+#[allow(async_fn_in_trait)]
 pub trait Database {
     type Conn<'a>: Connection
     where
@@ -15,14 +16,11 @@ pub trait Database {
     where
         Self: 'a;
 
-    fn open(path: &str) -> impl Future<Output = Result<Self, AppErr>>
+    async fn open(path: &str) -> Result<Self, AppErr>
     where
         Self: Sized;
     fn conn(&self) -> Self::Conn<'_>;
-    fn transaction<T, F>(
-        &self,
-        f: impl FnOnce(Self::Tx<'_>) -> F,
-    ) -> impl Future<Output = Result<T, AppErr>>
+    async fn transaction<T, F>(&self, f: impl FnOnce(Self::Tx<'_>) -> F) -> Result<T, AppErr>
     where
         F: Future<Output = Result<T, AppErr>>;
 }

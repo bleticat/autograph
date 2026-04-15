@@ -67,52 +67,45 @@ impl Database for SqlxDatabase {
     type Conn<'a> = SqlxConnection;
     type Tx<'a> = SqlxTransaction;
 
-    fn open(path: &str) -> impl Future<Output = Result<Self, AppErr>> {
+    async fn open(path: &str) -> Result<Self, AppErr> {
         let path = path.to_owned();
-        async move {
-            let is_memory = path == ":memory:";
-            let conn_str = if is_memory {
-                "sqlite::memory:".to_owned()
-            } else {
-                format!("sqlite://{path}")
-            };
+        let is_memory = path == ":memory:";
+        let conn_str = if is_memory {
+            "sqlite::memory:".to_owned()
+        } else {
+            format!("sqlite://{path}")
+        };
 
-            let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
-                .foreign_keys(true)
-                .create_if_missing(!is_memory);
-            let pool = SqlitePoolOptions::new()
-                // Keep a single SQLite connection so in-memory DBs and transactional sequencing
-                // behave consistently across command/query adapters.
-                .max_connections(1)
-                .connect_with(conn_options)
-                .await?;
+        let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
+            .foreign_keys(true)
+            .create_if_missing(!is_memory);
+        let pool = SqlitePoolOptions::new()
+            // Keep a single SQLite connection so in-memory DBs and transactional sequencing
+            // behave consistently across command/query adapters.
+            .max_connections(1)
+            .connect_with(conn_options)
+            .await?;
 
-            Ok(Self { pool })
-        }
+        Ok(Self { pool })
     }
 
     fn conn(&self) -> SqlxConnection {
         SqlxConnection(self.pool.clone())
     }
 
-    fn transaction<T, F>(
-        &self,
-        f: impl FnOnce(SqlxTransaction) -> F,
-    ) -> impl Future<Output = Result<T, AppErr>>
+    async fn transaction<T, F>(&self, f: impl FnOnce(SqlxTransaction) -> F) -> Result<T, AppErr>
     where
         F: Future<Output = Result<T, AppErr>>,
     {
-        async move {
-            let tx = SqlxTransaction::new(self.pool.begin().await?);
-            match f(tx.clone()).await {
-                Ok(val) => {
-                    tx.commit().await?;
-                    Ok(val)
-                }
-                Err(e) => {
-                    let _ = tx.rollback().await;
-                    Err(e)
-                }
+        let tx = SqlxTransaction::new(self.pool.begin().await?);
+        match f(tx.clone()).await {
+            Ok(val) => {
+                tx.commit().await?;
+                Ok(val)
+            }
+            Err(e) => {
+                let _ = tx.rollback().await;
+                Err(e)
             }
         }
     }
