@@ -37,13 +37,13 @@ impl<'a> Repository<Project> for SqliteProjectRepository<'a> {
             let id = Uuid::new_v4();
             self.conn.execute(
                 "INSERT INTO projects (id, title) VALUES (?1, ?2)",
-                rusqlite::params![id, project.title],
+                rusqlite::params![id, project.title.as_str()],
             )?;
             Ok(id)
         } else {
             self.conn.execute(
                 "UPDATE projects SET title = ?1 WHERE id = ?2",
-                rusqlite::params![project.title, project.id],
+                rusqlite::params![project.title.as_str(), project.id],
             )?;
             Ok(project.id)
         }
