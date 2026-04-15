@@ -54,13 +54,13 @@ fn add_todo(
         })
         .transpose()?;
     let db = state.db.lock().unwrap();
-    db.transaction(|tx| {
+    block_on(db.transaction(|tx| async move {
         let repo = RepoAdapter::from(tx);
         match project_id {
-            Some(pid) => block_on(TaskCommands::new(&repo).add_with_project(&title, pid)),
-            None => block_on(TaskCommands::new(&repo).add(&title)),
+            Some(pid) => TaskCommands::new(&repo).add_with_project(&title, pid).await,
+            None => TaskCommands::new(&repo).add(&title).await,
         }
-    })
+    }))
     .map_err(|e| e.to_string())?;
     block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
@@ -71,10 +71,10 @@ fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .parse()
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
-    db.transaction(|tx| {
+    block_on(db.transaction(|tx| async move {
         let repo = RepoAdapter::from(tx);
-        block_on(TaskCommands::new(&repo).toggle(id))
-    })
+        TaskCommands::new(&repo).toggle(id).await
+    }))
     .map_err(|e| e.to_string())?;
     block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
@@ -85,10 +85,10 @@ fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .parse()
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
-    db.transaction(|tx| {
+    block_on(db.transaction(|tx| async move {
         let repo = RepoAdapter::from(tx);
-        block_on(TaskCommands::new(&repo).delete(id))
-    })
+        TaskCommands::new(&repo).delete(id).await
+    }))
     .map_err(|e| e.to_string())?;
     block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
@@ -102,17 +102,17 @@ fn get_projects(state: State<AppState>) -> Result<Vec<Project>, String> {
 #[tauri::command]
 fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, String> {
     let db = state.db.lock().unwrap();
-    db.transaction(|tx| {
+    block_on(db.transaction(|tx| async move {
         let repo = ProjectRepoAdapter::from(tx);
-        block_on(ProjectCommands::new(&repo).add(&title))
-    })
+        ProjectCommands::new(&repo).add(&title).await
+    }))
     .map_err(|e| e.to_string())?;
     block_on(ProjectQueryAdapter::from(db.conn()).get_all_projects()).map_err(|e| e.to_string())
 }
 
 fn main() {
-    let db = Db::open("../db.sqlite").expect("Failed to initialize database");
-    db.migrate().expect("Failed to migrate database");
+    let db = block_on(Db::open("../db.sqlite")).expect("Failed to initialize database");
+    block_on(db.migrate()).expect("Failed to migrate database");
 
     tauri::Builder::default()
         .manage(AppState { db: Mutex::new(db) })

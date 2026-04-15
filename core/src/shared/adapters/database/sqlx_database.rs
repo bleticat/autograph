@@ -1,8 +1,8 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Connection, Database, Transaction};
-use futures::executor::block_on;
 use sqlx::Connection as _;
 use std::cell::RefCell;
+use std::future::Future;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -35,9 +35,11 @@ pub struct SqlxDatabase {
 }
 
 impl SqlxDatabase {
-    pub fn migrate(&self) -> Result<(), AppErr> {
+    pub async fn migrate(&self) -> Result<(), AppErr> {
         let mut conn = self.conn.borrow_mut();
-        block_on(sqlx::migrate!("./src/shared/adapters/database/migrations").run(&mut *conn))?;
+        sqlx::migrate!("./src/shared/adapters/database/migrations")
+            .run(&mut *conn)
+            .await?;
         Ok(())
     }
 }
@@ -46,53 +48,61 @@ impl Database for SqlxDatabase {
     type Conn<'a> = SqlxConnection;
     type Tx<'a> = SqlxTransaction;
 
-    fn open(path: &str) -> Result<Self, AppErr> {
-        let is_memory = path == ":memory:";
-        let conn_str = if is_memory {
-            "sqlite::memory:".to_owned()
-        } else {
-            format!("sqlite://{path}")
-        };
+    fn open(path: &str) -> impl Future<Output = Result<Self, AppErr>> {
+        let path = path.to_owned();
+        async move {
+            let is_memory = path == ":memory:";
+            let conn_str = if is_memory {
+                "sqlite::memory:".to_owned()
+            } else {
+                format!("sqlite://{path}")
+            };
 
-        let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
-            .foreign_keys(true)
-            .create_if_missing(!is_memory);
-        let conn = block_on(sqlx::SqliteConnection::connect_with(&conn_options))?;
+            let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
+                .foreign_keys(true)
+                .create_if_missing(!is_memory);
+            let conn = sqlx::SqliteConnection::connect_with(&conn_options).await?;
 
-        Ok(Self {
-            conn: Rc::new(RefCell::new(conn)),
-        })
+            Ok(Self {
+                conn: Rc::new(RefCell::new(conn)),
+            })
+        }
     }
 
     fn conn(&self) -> SqlxConnection {
         SqlxConnection(Rc::clone(&self.conn))
     }
 
-    fn transaction<T>(
+    fn transaction<T, F>(
         &self,
-        f: impl FnOnce(SqlxTransaction) -> Result<T, AppErr>,
-    ) -> Result<T, AppErr> {
-        {
-            let mut conn = self.conn.borrow_mut();
-            block_on(sqlx::query("BEGIN").execute(&mut *conn))?;
-        }
-
-        let tx = SqlxTransaction(Rc::clone(&self.conn));
-        match f(tx) {
-            Ok(val) => {
+        f: impl FnOnce(SqlxTransaction) -> F,
+    ) -> impl Future<Output = Result<T, AppErr>>
+    where
+        F: Future<Output = Result<T, AppErr>>,
+    {
+        async move {
+            {
                 let mut conn = self.conn.borrow_mut();
-                match block_on(sqlx::query("COMMIT").execute(&mut *conn)) {
-                    Ok(_) => Ok(val),
-                    Err(e) => {
-                        let _ = block_on(sqlx::query("ROLLBACK").execute(&mut *conn));
-                        Err(e.into())
+                sqlx::query("BEGIN").execute(&mut *conn).await?;
+            }
+
+            let tx = SqlxTransaction(Rc::clone(&self.conn));
+            match f(tx).await {
+                Ok(val) => {
+                    let mut conn = self.conn.borrow_mut();
+                    match sqlx::query("COMMIT").execute(&mut *conn).await {
+                        Ok(_) => Ok(val),
+                        Err(e) => {
+                            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                            Err(e.into())
+                        }
                     }
                 }
-            }
-            Err(e) => {
-                let mut conn = self.conn.borrow_mut();
-                let _ = block_on(sqlx::query("ROLLBACK").execute(&mut *conn));
-                Err(e)
+                Err(e) => {
+                    let mut conn = self.conn.borrow_mut();
+                    let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                    Err(e)
+                }
             }
         }
     }
