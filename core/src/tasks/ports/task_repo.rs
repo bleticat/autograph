@@ -10,5 +10,5 @@ pub enum TodoSave {
 pub trait TodoRepository: From<Self::Tx> {
     type Tx: Transaction;
     fn get(&self, id: i64) -> Result<Option<Todo>, AppErr>;
-    fn save(&self, change: TodoSave) -> Result<Option<i64>, AppErr>;
+    fn save(&self, change: TodoSave) -> Result<i64, AppErr>;
 }

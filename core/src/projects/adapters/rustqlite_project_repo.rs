@@ -31,7 +31,7 @@ impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
     }
 
     fn save(&self, project: &Project) -> Result<i64, AppErr> {
-        if project.id <= 0 {
+        if project.id == 0 {
             self.conn
                 .execute("INSERT INTO projects (title) VALUES (?1)", [&project.title])?;
             Ok(self.conn.last_insert_rowid())
