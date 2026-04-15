@@ -43,11 +43,7 @@ fn get_todos_by_project(project_id: i64, state: State<AppState>) -> Result<Vec<T
 }
 
 #[tauri::command]
-fn add_todo(
-    title: String,
-    project_id: Option<i64>,
-    state: State<AppState>,
-) -> Result<Vec<Todo>, String> {
+fn add_todo(title: String, project_id: Option<i64>, state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
