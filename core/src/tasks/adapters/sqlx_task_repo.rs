@@ -20,11 +20,14 @@ impl Repository<Todo> for SqliteTodoRepository {
     type Tx = SqlxTransaction;
 
     async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
             .bind(id)
-            .fetch_optional(&mut *conn)
+            .fetch_optional(&mut **tx)
             .await?;
         Ok(row.map(|row| Todo {
             id: row.get(0),
@@ -35,8 +38,11 @@ impl Repository<Todo> for SqliteTodoRepository {
     }
 
     async fn save(&self, todo: &Todo) -> Result<Uuid, AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
@@ -46,7 +52,7 @@ impl Repository<Todo> for SqliteTodoRepository {
             .bind(&todo.title)
             .bind(todo.completed)
             .bind(todo.project_id)
-            .execute(&mut *conn)
+            .execute(&mut **tx)
             .await?;
             Ok(id)
         } else {
@@ -57,7 +63,7 @@ impl Repository<Todo> for SqliteTodoRepository {
             .bind(todo.completed)
             .bind(todo.project_id)
             .bind(todo.id)
-            .execute(&mut *conn)
+            .execute(&mut **tx)
             .await?
             .rows_affected();
             if updated == 0 {
@@ -68,11 +74,14 @@ impl Repository<Todo> for SqliteTodoRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
-            .execute(&mut *conn)
+            .execute(&mut **tx)
             .await?;
         Ok(())
     }

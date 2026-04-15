@@ -20,11 +20,14 @@ impl Repository<Project> for SqliteProjectRepository {
     type Tx = SqlxTransaction;
 
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
             .bind(id)
-            .fetch_optional(&mut *conn)
+            .fetch_optional(&mut **tx)
             .await?;
         Ok(row.map(|row| Project {
             id: row.get(0),
@@ -33,32 +36,38 @@ impl Repository<Project> for SqliteProjectRepository {
     }
 
     async fn save(&self, project: &Project) -> Result<Uuid, AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         if project.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query("INSERT INTO projects (id, title) VALUES (?1, ?2)")
                 .bind(id)
                 .bind(project.title.as_str())
-                .execute(&mut *conn)
+                .execute(&mut **tx)
                 .await?;
             Ok(id)
         } else {
             sqlx::query("UPDATE projects SET title = ?1 WHERE id = ?2")
                 .bind(project.title.as_str())
                 .bind(project.id)
-                .execute(&mut *conn)
+                .execute(&mut **tx)
                 .await?;
             Ok(project.id)
         }
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let conn = self.conn.raw();
-        let mut conn = conn.borrow_mut();
+        let tx = self.conn.raw();
+        let mut tx = tx.lock().await;
+        let tx = tx
+            .as_mut()
+            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
         sqlx::query("DELETE FROM projects WHERE id = ?1")
             .bind(id)
-            .execute(&mut *conn)
+            .execute(&mut **tx)
             .await?;
         Ok(())
     }

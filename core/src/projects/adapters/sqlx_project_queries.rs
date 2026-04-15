@@ -21,9 +21,8 @@ impl ProjectQueries for SqliteProjectQueries {
     fn get_all_projects(&self) -> impl Future<Output = Result<Vec<Project>, AppErr>> {
         let conn = self.conn.raw();
         async move {
-            let mut conn = conn.borrow_mut();
             let rows = sqlx::query("SELECT id, title FROM projects ORDER BY rowid")
-                .fetch_all(&mut *conn)
+                .fetch_all(&conn)
                 .await?;
             let projects = rows
                 .into_iter()

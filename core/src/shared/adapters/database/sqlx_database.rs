@@ -1,28 +1,48 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Connection, Database, Transaction};
-use sqlx::Connection as _;
-use std::cell::RefCell;
+use sqlx::sqlite::SqlitePoolOptions;
 use std::future::Future;
-use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
-pub struct SqlxConnection(Rc<RefCell<sqlx::SqliteConnection>>);
+pub struct SqlxConnection(sqlx::SqlitePool);
 
 impl SqlxConnection {
-    pub(crate) fn raw(&self) -> Rc<RefCell<sqlx::SqliteConnection>> {
-        Rc::clone(&self.0)
+    pub(crate) fn raw(&self) -> sqlx::SqlitePool {
+        self.0.clone()
     }
 }
 
 impl Connection for SqlxConnection {}
 
 #[derive(Clone)]
-pub struct SqlxTransaction(Rc<RefCell<sqlx::SqliteConnection>>);
+pub struct SqlxTransaction(Arc<Mutex<Option<sqlx::Transaction<'static, sqlx::Sqlite>>>>);
 
 impl SqlxTransaction {
-    pub(crate) fn raw(&self) -> Rc<RefCell<sqlx::SqliteConnection>> {
-        Rc::clone(&self.0)
+    fn new(tx: sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
+        Self(Arc::new(Mutex::new(Some(tx))))
+    }
+
+    pub(crate) fn raw(&self) -> Arc<Mutex<Option<sqlx::Transaction<'static, sqlx::Sqlite>>>> {
+        self.0.clone()
+    }
+
+    async fn commit(&self) -> Result<(), AppErr> {
+        let mut tx = self.0.lock().await;
+        if let Some(tx) = tx.take() {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+
+    async fn rollback(&self) -> Result<(), AppErr> {
+        let mut tx = self.0.lock().await;
+        if let Some(tx) = tx.take() {
+            tx.rollback().await?;
+        }
+        Ok(())
     }
 }
 
@@ -31,14 +51,13 @@ impl Transaction for SqlxTransaction {
 }
 
 pub struct SqlxDatabase {
-    conn: Rc<RefCell<sqlx::SqliteConnection>>,
+    pool: sqlx::SqlitePool,
 }
 
 impl SqlxDatabase {
     pub async fn migrate(&self) -> Result<(), AppErr> {
-        let mut conn = self.conn.borrow_mut();
         sqlx::migrate!("./src/shared/adapters/database/migrations")
-            .run(&mut *conn)
+            .run(&self.pool)
             .await?;
         Ok(())
     }
@@ -61,16 +80,17 @@ impl Database for SqlxDatabase {
             let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
                 .foreign_keys(true)
                 .create_if_missing(!is_memory);
-            let conn = sqlx::SqliteConnection::connect_with(&conn_options).await?;
+            let pool = SqlitePoolOptions::new()
+                .max_connections(1)
+                .connect_with(conn_options)
+                .await?;
 
-            Ok(Self {
-                conn: Rc::new(RefCell::new(conn)),
-            })
+            Ok(Self { pool })
         }
     }
 
     fn conn(&self) -> SqlxConnection {
-        SqlxConnection(Rc::clone(&self.conn))
+        SqlxConnection(self.pool.clone())
     }
 
     fn transaction<T, F>(
@@ -81,26 +101,14 @@ impl Database for SqlxDatabase {
         F: Future<Output = Result<T, AppErr>>,
     {
         async move {
-            {
-                let mut conn = self.conn.borrow_mut();
-                sqlx::query("BEGIN").execute(&mut *conn).await?;
-            }
-
-            let tx = SqlxTransaction(Rc::clone(&self.conn));
-            match f(tx).await {
+            let tx = SqlxTransaction::new(self.pool.begin().await?);
+            match f(tx.clone()).await {
                 Ok(val) => {
-                    let mut conn = self.conn.borrow_mut();
-                    match sqlx::query("COMMIT").execute(&mut *conn).await {
-                        Ok(_) => Ok(val),
-                        Err(e) => {
-                            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
-                            Err(e.into())
-                        }
-                    }
+                    tx.commit().await?;
+                    Ok(val)
                 }
                 Err(e) => {
-                    let mut conn = self.conn.borrow_mut();
-                    let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                    let _ = tx.rollback().await;
                     Err(e)
                 }
             }

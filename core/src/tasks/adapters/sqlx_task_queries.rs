@@ -22,10 +22,9 @@ impl TaskQueries for SqliteTaskQueries {
     fn get_all_todos(&self) -> impl Future<Output = Result<Vec<Todo>, AppErr>> {
         let conn = self.conn.raw();
         async move {
-            let mut conn = conn.borrow_mut();
             let rows =
                 sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")
-                    .fetch_all(&mut *conn)
+                    .fetch_all(&conn)
                     .await?;
             let todos = rows
                 .into_iter()
@@ -43,11 +42,10 @@ impl TaskQueries for SqliteTaskQueries {
     fn get_todos_without_project(&self) -> impl Future<Output = Result<Vec<Todo>, AppErr>> {
         let conn = self.conn.raw();
         async move {
-            let mut conn = conn.borrow_mut();
             let rows = sqlx::query(
                 "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY rowid",
             )
-            .fetch_all(&mut *conn)
+            .fetch_all(&conn)
             .await?;
             let todos = rows
                 .into_iter()
@@ -68,12 +66,11 @@ impl TaskQueries for SqliteTaskQueries {
     ) -> impl Future<Output = Result<Vec<Todo>, AppErr>> {
         let conn = self.conn.raw();
         async move {
-            let mut conn = conn.borrow_mut();
             let rows = sqlx::query(
                 "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY rowid",
             )
             .bind(project_id)
-            .fetch_all(&mut *conn)
+            .fetch_all(&conn)
             .await?;
             let todos = rows
                 .into_iter()

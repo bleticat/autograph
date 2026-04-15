@@ -5,9 +5,8 @@ use autograph_core::{
     SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands,
     TaskQueries, Todo,
 };
-use futures::executor::block_on;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{async_runtime::block_on, State};
 
 type Db = SqlxDatabase;
 type QueryAdapter = SqliteTaskQueries;
