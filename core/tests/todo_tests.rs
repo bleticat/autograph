@@ -1,7 +1,16 @@
 use autograph_core::{
     Database, SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands, TaskQueries,
 };
-use futures::executor::block_on;
+use std::future::Future;
+
+fn block_on<T>(future: impl Future<Output = T>) -> T {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build tokio runtime for test")
+        .block_on(future)
+}
+
 use uuid::Uuid;
 
 fn fresh_db() -> SqlxDatabase {
