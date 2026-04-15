@@ -53,6 +53,7 @@ impl Database for RustqliteDatabase {
 
     fn open(path: &str) -> Result<Self, AppErr> {
         let conn = rusqlite::Connection::open(path)?;
+        conn.execute_batch("PRAGMA foreign_keys = ON")?;
         Ok(Self { conn })
     }
 
