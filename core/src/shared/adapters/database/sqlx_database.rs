@@ -81,6 +81,8 @@ impl Database for SqlxDatabase {
                 .foreign_keys(true)
                 .create_if_missing(!is_memory);
             let pool = SqlitePoolOptions::new()
+                // Keep a single SQLite connection so in-memory DBs and transactional sequencing
+                // behave consistently across command/query adapters.
                 .max_connections(1)
                 .connect_with(conn_options)
                 .await?;
