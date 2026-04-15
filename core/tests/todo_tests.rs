@@ -225,18 +225,18 @@ fn full_workflow() {
 
     // Complete one
     let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
-    let toggle_id = todos[1].id;
-    let delete_id = todos[2].id;
+    let middle_todo_id = todos[1].id;
+    let last_todo_id = todos[2].id;
     block_on(db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).toggle(toggle_id).await
+        TaskCommands::new(&repo).toggle(middle_todo_id).await
     }))
     .unwrap();
 
     // Delete one
     block_on(db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).delete(delete_id).await
+        TaskCommands::new(&repo).delete(last_todo_id).await
     }))
     .unwrap();
 
