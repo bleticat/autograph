@@ -1,256 +1,310 @@
 use autograph_core::{
     Database, SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands, TaskQueries,
 };
-use std::future::Future;
-
-fn block_on<T>(future: impl Future<Output = T>) -> T {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("failed to build tokio runtime for test")
-        .block_on(future)
-}
-
 use uuid::Uuid;
 
-fn fresh_db() -> SqlxDatabase {
-    let db = block_on(SqlxDatabase::open(":memory:")).expect("failed to create in-memory db");
-    block_on(db.migrate()).expect("failed to run migrations");
+async fn fresh_db() -> SqlxDatabase {
+    let db = (SqlxDatabase::open(":memory:"))
+        .await
+        .expect("failed to create in-memory db");
+    (db.migrate()).await.expect("failed to run migrations");
     db
 }
 
-#[test]
-fn empty_database_returns_no_todos() {
-    let db = fresh_db();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+#[tokio::test]
+async fn empty_database_returns_no_todos() {
+    let db = fresh_db().await;
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert!(todos.is_empty());
 }
 
-#[test]
-fn add_single_todo() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn add_single_todo() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("buy milk").await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "buy milk");
     assert!(!todos[0].completed);
 }
 
-#[test]
-fn add_multiple_todos_preserves_order() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn add_multiple_todos_preserves_order() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("first").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("second").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("third").await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert_eq!(todos.len(), 3);
     assert_eq!(todos[0].title, "first");
     assert_eq!(todos[1].title, "second");
     assert_eq!(todos[2].title, "third");
 }
 
-#[test]
-fn toggle_marks_completed() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn toggle_marks_completed() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("task").await
     }))
+    .await
     .unwrap();
-    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
+    let id = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
 
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).toggle(id).await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert!(todos[0].completed);
 }
 
-#[test]
-fn toggle_twice_restores_incomplete() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn toggle_twice_restores_incomplete() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("task").await
     }))
+    .await
     .unwrap();
-    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
+    let id = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
 
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).toggle(id).await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).toggle(id).await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert!(!todos[0].completed);
 }
 
-#[test]
-fn delete_removes_todo() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn delete_removes_todo() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("to delete").await
     }))
+    .await
     .unwrap();
-    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
+    let id = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
 
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).delete(id).await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert!(todos.is_empty());
 }
 
-#[test]
-fn delete_only_target_todo() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn delete_only_target_todo() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("keep").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("remove").await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     let remove_id = todos[1].id;
 
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).delete(remove_id).await
     }))
+    .await
     .unwrap();
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "keep");
 }
 
-#[test]
-fn toggle_nonexistent_id_is_noop() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn toggle_nonexistent_id_is_noop() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).toggle(Uuid::new_v4()).await
     }))
+    .await
     .unwrap();
-    assert!(block_on(SqliteTaskQueries::from(db.conn()).get_all_todos())
+    assert!((SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
         .unwrap()
         .is_empty());
 }
 
-#[test]
-fn delete_nonexistent_id_is_noop() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn delete_nonexistent_id_is_noop() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("still here").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).delete(Uuid::new_v4()).await
     }))
+    .await
     .unwrap();
     assert_eq!(
-        block_on(SqliteTaskQueries::from(db.conn()).get_all_todos())
+        (SqliteTaskQueries::from(db.conn()).get_all_todos())
+            .await
             .unwrap()
             .len(),
         1
     );
 }
 
-#[test]
-fn ids_are_unique_after_delete() {
-    let db = fresh_db();
-    block_on(db.transaction(|tx| async move {
+#[tokio::test]
+async fn ids_are_unique_after_delete() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("first").await
     }))
+    .await
     .unwrap();
-    let first_id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
-    block_on(db.transaction(|tx| async move {
+    let first_id = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).delete(first_id).await
     }))
+    .await
     .unwrap();
 
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("second").await
     }))
+    .await
     .unwrap();
-    let second_id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
+    let second_id = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
     assert_ne!(first_id, second_id);
 }
 
-#[test]
-fn full_workflow() {
-    let db = fresh_db();
+#[tokio::test]
+async fn full_workflow() {
+    let db = fresh_db().await;
 
     // Add a few todos
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("buy groceries").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("write tests").await
     }))
+    .await
     .unwrap();
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).add("deploy app").await
     }))
+    .await
     .unwrap();
 
     // Complete one
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     let middle_todo_id = todos[1].id;
     let last_todo_id = todos[2].id;
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).toggle(middle_todo_id).await
     }))
+    .await
     .unwrap();
 
     // Delete one
-    block_on(db.transaction(|tx| async move {
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
         TaskCommands::new(&repo).delete(last_todo_id).await
     }))
+    .await
     .unwrap();
 
     // Verify final state
-    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
+    let todos = (SqliteTaskQueries::from(db.conn()).get_all_todos())
+        .await
+        .unwrap();
     assert_eq!(todos.len(), 2);
     assert_eq!(todos[0].title, "buy groceries");
     assert!(!todos[0].completed);
