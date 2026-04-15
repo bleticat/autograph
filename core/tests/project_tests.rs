@@ -1,50 +1,54 @@
 use autograph_core::{
-    Database, ProjectCommands, ProjectQueries, RustqliteDatabase, SqliteProjectQueries,
-    SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Database, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteProjectRepository,
+    SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands, TaskQueries,
 };
 
-fn fresh_db() -> RustqliteDatabase {
-    let db = RustqliteDatabase::open(":memory:").expect("failed to create in-memory db");
-    db.migrate().expect("failed to run migrations");
+async fn fresh_db() -> SqlxDatabase {
+    let db = (SqlxDatabase::open(":memory:"))
+        .await
+        .expect("failed to create in-memory db");
+    (db.migrate()).await.expect("failed to run migrations");
     db
 }
 
-#[test]
-fn empty_database_returns_no_projects() {
-    let db = fresh_db();
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
+#[tokio::test]
+async fn empty_database_returns_no_projects() {
+    let db = fresh_db().await;
+    let projects = (SqliteProjectQueries::from(db.conn()).get_all_projects())
+        .await
         .unwrap();
     assert!(projects.is_empty());
 }
 
-#[test]
-fn add_single_project() {
-    let db = fresh_db();
-    db.transaction(|tx| {
+#[tokio::test]
+async fn add_single_project() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteProjectRepository::from(tx);
-        ProjectCommands::new(&repo).add("My Project")
-    })
+        ProjectCommands::new(&repo).add("My Project").await
+    }))
+    .await
     .unwrap();
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
+    let projects = (SqliteProjectQueries::from(db.conn()).get_all_projects())
+        .await
         .unwrap();
     assert_eq!(projects.len(), 1);
     assert_eq!(projects[0].title, "My Project");
 }
 
-#[test]
-fn add_multiple_projects_preserves_order() {
-    let db = fresh_db();
+#[tokio::test]
+async fn add_multiple_projects_preserves_order() {
+    let db = fresh_db().await;
     for title in &["Alpha", "Beta", "Gamma"] {
-        db.transaction(|tx| {
+        (db.transaction(|tx| async move {
             let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add(title)
-        })
+            ProjectCommands::new(&repo).add(title).await
+        }))
+        .await
         .unwrap();
     }
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
+    let projects = (SqliteProjectQueries::from(db.conn()).get_all_projects())
+        .await
         .unwrap();
     assert_eq!(projects.len(), 3);
     assert_eq!(projects[0].title, "Alpha");
@@ -52,97 +56,108 @@ fn add_multiple_projects_preserves_order() {
     assert_eq!(projects[2].title, "Gamma");
 }
 
-#[test]
-fn todos_without_project_by_default() {
-    let db = fresh_db();
-    db.transaction(|tx| {
+#[tokio::test]
+async fn todos_without_project_by_default() {
+    let db = fresh_db().await;
+    (db.transaction(|tx| async move {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add("inbox task")
-    })
+        TaskCommands::new(&repo).add("inbox task").await
+    }))
+    .await
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
+    let todos = (SqliteTaskQueries::from(db.conn()).get_todos_without_project())
+        .await
         .unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "inbox task");
     assert!(todos[0].project_id.is_none());
 }
 
-#[test]
-fn add_todo_with_project() {
-    let db = fresh_db();
-    let project_id = db
-        .transaction(|tx| {
-            let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Work")
-        })
-        .unwrap();
-
-    db.transaction(|tx| {
-        let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("write report", project_id)
-    })
+#[tokio::test]
+async fn add_todo_with_project() {
+    let db = fresh_db().await;
+    let project_id = (db.transaction(|tx| async move {
+        let repo = SqliteProjectRepository::from(tx);
+        ProjectCommands::new(&repo).add("Work").await
+    }))
+    .await
     .unwrap();
 
-    let todos_by_project = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(project_id)
+    (db.transaction(|tx| async move {
+        let repo = SqliteTodoRepository::from(tx);
+        TaskCommands::new(&repo)
+            .add_with_project("write report", project_id)
+            .await
+    }))
+    .await
+    .unwrap();
+
+    let todos_by_project = (SqliteTaskQueries::from(db.conn()).get_todos_by_project(project_id))
+        .await
         .unwrap();
     assert_eq!(todos_by_project.len(), 1);
     assert_eq!(todos_by_project[0].title, "write report");
     assert_eq!(todos_by_project[0].project_id, Some(project_id));
 
-    let todos_without = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
+    let todos_without = (SqliteTaskQueries::from(db.conn()).get_todos_without_project())
+        .await
         .unwrap();
     assert!(todos_without.is_empty());
 }
 
-#[test]
-fn tasks_are_filtered_by_project() {
-    let db = fresh_db();
-    let p1 = db
-        .transaction(|tx| {
-            let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Project A")
-        })
-        .unwrap();
-    let p2 = db
-        .transaction(|tx| {
-            let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Project B")
-        })
-        .unwrap();
-
-    db.transaction(|tx| {
-        let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("task for A", p1)
-    })
+#[tokio::test]
+async fn tasks_are_filtered_by_project() {
+    let db = fresh_db().await;
+    let p1 = (db.transaction(|tx| async move {
+        let repo = SqliteProjectRepository::from(tx);
+        ProjectCommands::new(&repo).add("Project A").await
+    }))
+    .await
     .unwrap();
-    db.transaction(|tx| {
-        let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("task for B", p2)
-    })
-    .unwrap();
-    db.transaction(|tx| {
-        let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add("no project task")
-    })
+    let p2 = (db.transaction(|tx| async move {
+        let repo = SqliteProjectRepository::from(tx);
+        ProjectCommands::new(&repo).add("Project B").await
+    }))
+    .await
     .unwrap();
 
-    let p1_todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(p1)
+    (db.transaction(|tx| async move {
+        let repo = SqliteTodoRepository::from(tx);
+        TaskCommands::new(&repo)
+            .add_with_project("task for A", p1)
+            .await
+    }))
+    .await
+    .unwrap();
+    (db.transaction(|tx| async move {
+        let repo = SqliteTodoRepository::from(tx);
+        TaskCommands::new(&repo)
+            .add_with_project("task for B", p2)
+            .await
+    }))
+    .await
+    .unwrap();
+    (db.transaction(|tx| async move {
+        let repo = SqliteTodoRepository::from(tx);
+        TaskCommands::new(&repo).add("no project task").await
+    }))
+    .await
+    .unwrap();
+
+    let p1_todos = (SqliteTaskQueries::from(db.conn()).get_todos_by_project(p1))
+        .await
         .unwrap();
     assert_eq!(p1_todos.len(), 1);
     assert_eq!(p1_todos[0].title, "task for A");
 
-    let p2_todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(p2)
+    let p2_todos = (SqliteTaskQueries::from(db.conn()).get_todos_by_project(p2))
+        .await
         .unwrap();
     assert_eq!(p2_todos.len(), 1);
     assert_eq!(p2_todos[0].title, "task for B");
 
-    let no_project = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
+    let no_project = (SqliteTaskQueries::from(db.conn()).get_todos_without_project())
+        .await
         .unwrap();
     assert_eq!(no_project.len(), 1);
     assert_eq!(no_project[0].title, "no project task");

@@ -1,4 +1,5 @@
 use crate::shared::error::AppErr;
+use std::future::Future;
 
 pub trait Connection {}
 
@@ -14,12 +15,14 @@ pub trait Database {
     where
         Self: 'a;
 
-    fn open(path: &str) -> Result<Self, AppErr>
+    fn open(path: &str) -> impl Future<Output = Result<Self, AppErr>>
     where
         Self: Sized;
     fn conn(&self) -> Self::Conn<'_>;
-    fn transaction<T>(
+    fn transaction<T, F>(
         &self,
-        f: impl FnOnce(Self::Tx<'_>) -> Result<T, AppErr>,
-    ) -> Result<T, AppErr>;
+        f: impl FnOnce(Self::Tx<'_>) -> F,
+    ) -> impl Future<Output = Result<T, AppErr>>
+    where
+        F: Future<Output = Result<T, AppErr>>;
 }

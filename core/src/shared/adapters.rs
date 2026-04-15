@@ -1,1 +1,1 @@
-pub mod rustqlite_database;
+pub mod database;

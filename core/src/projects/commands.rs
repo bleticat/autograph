@@ -12,10 +12,12 @@ impl<'a, R: ProjectRepository> ProjectCommands<'a, R> {
         Self { projects }
     }
 
-    pub fn add(&self, title: &str) -> Result<Uuid, AppErr> {
-        self.projects.save(&Project {
-            id: Uuid::nil(),
-            title: title.to_owned(),
-        })
+    pub async fn add(&self, title: &str) -> Result<Uuid, AppErr> {
+        self.projects
+            .save(&Project {
+                id: Uuid::nil(),
+                title: title.to_owned(),
+            })
+            .await
     }
 }
