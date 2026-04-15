@@ -1,82 +1,95 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Connection, Database, Transaction};
+use futures::executor::block_on;
+use sqlx::Connection as _;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::str::FromStr;
 
-#[derive(Copy, Clone)]
-pub struct RustqliteConnection<'a>(&'a rusqlite::Connection);
+#[derive(Clone)]
+pub struct RustqliteConnection(Rc<RefCell<sqlx::SqliteConnection>>);
 
-impl<'a> RustqliteConnection<'a> {
-    pub(crate) fn raw(&self) -> &'a rusqlite::Connection {
-        self.0
+impl RustqliteConnection {
+    pub(crate) fn raw(&self) -> Rc<RefCell<sqlx::SqliteConnection>> {
+        Rc::clone(&self.0)
     }
 }
 
-impl Connection for RustqliteConnection<'_> {}
+impl Connection for RustqliteConnection {}
 
-#[derive(Copy, Clone)]
-pub struct RustqliteTransaction<'a>(&'a rusqlite::Connection);
+#[derive(Clone)]
+pub struct RustqliteTransaction(Rc<RefCell<sqlx::SqliteConnection>>);
 
-impl<'a> RustqliteTransaction<'a> {
-    pub(crate) fn raw(&self) -> &'a rusqlite::Connection {
-        self.0
+impl RustqliteTransaction {
+    pub(crate) fn raw(&self) -> Rc<RefCell<sqlx::SqliteConnection>> {
+        Rc::clone(&self.0)
     }
 }
 
-impl<'a> Transaction for RustqliteTransaction<'a> {
-    type Conn = RustqliteConnection<'a>;
+impl Transaction for RustqliteTransaction {
+    type Conn = RustqliteConnection;
 }
 
 pub struct RustqliteDatabase {
-    conn: rusqlite::Connection,
+    conn: Rc<RefCell<sqlx::SqliteConnection>>,
 }
 
 impl RustqliteDatabase {
     pub fn migrate(&self) -> Result<(), AppErr> {
-        self.conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS projects (
-                id    TEXT PRIMARY KEY,
-                title TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS todos (
-                id         TEXT PRIMARY KEY,
-                title      TEXT NOT NULL,
-                completed  INTEGER NOT NULL DEFAULT 0,
-                project_id TEXT REFERENCES projects(id) ON DELETE SET NULL
-            );",
-        )?;
+        let mut conn = self.conn.borrow_mut();
+        block_on(sqlx::migrate!("./migrations").run(&mut *conn))?;
         Ok(())
     }
 }
 
 impl Database for RustqliteDatabase {
-    type Conn<'a> = RustqliteConnection<'a>;
-    type Tx<'a> = RustqliteTransaction<'a>;
+    type Conn<'a> = RustqliteConnection;
+    type Tx<'a> = RustqliteTransaction;
 
     fn open(path: &str) -> Result<Self, AppErr> {
-        let conn = rusqlite::Connection::open(path)?;
-        conn.execute_batch("PRAGMA foreign_keys = ON")?;
-        Ok(Self { conn })
+        let conn_str = if path == ":memory:" {
+            "sqlite::memory:".to_owned()
+        } else {
+            format!("sqlite://{path}")
+        };
+
+        let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
+            .foreign_keys(true)
+            .create_if_missing(path != ":memory:");
+        let conn = block_on(sqlx::SqliteConnection::connect_with(&conn_options))?;
+
+        Ok(Self {
+            conn: Rc::new(RefCell::new(conn)),
+        })
     }
 
-    fn conn(&self) -> RustqliteConnection<'_> {
-        RustqliteConnection(&self.conn)
+    fn conn(&self) -> RustqliteConnection {
+        RustqliteConnection(Rc::clone(&self.conn))
     }
 
     fn transaction<T>(
         &self,
-        f: impl FnOnce(RustqliteTransaction<'_>) -> Result<T, AppErr>,
+        f: impl FnOnce(RustqliteTransaction) -> Result<T, AppErr>,
     ) -> Result<T, AppErr> {
-        self.conn.execute_batch("BEGIN")?;
-        let tx = RustqliteTransaction(&self.conn);
+        let mut conn = self.conn.borrow_mut();
+        block_on(sqlx::query("BEGIN").execute(&mut *conn))?;
+        drop(conn);
+
+        let tx = RustqliteTransaction(Rc::clone(&self.conn));
         match f(tx) {
-            Ok(val) => match self.conn.execute_batch("COMMIT") {
-                Ok(()) => Ok(val),
-                Err(e) => {
-                    let _ = self.conn.execute_batch("ROLLBACK");
-                    Err(e.into())
+            Ok(val) => {
+                let mut conn = self.conn.borrow_mut();
+                match block_on(sqlx::query("COMMIT").execute(&mut *conn)) {
+                    Ok(_) => Ok(val),
+                    Err(e) => {
+                        let _ = block_on(sqlx::query("ROLLBACK").execute(&mut *conn));
+                        Err(e.into())
+                    }
                 }
-            },
+            }
             Err(e) => {
-                let _ = self.conn.execute_batch("ROLLBACK");
+                let mut conn = self.conn.borrow_mut();
+                let _ = block_on(sqlx::query("ROLLBACK").execute(&mut *conn));
                 Err(e)
             }
         }
