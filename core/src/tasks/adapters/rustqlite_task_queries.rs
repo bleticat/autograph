@@ -2,6 +2,7 @@ use crate::shared::adapters::rustqlite_database::RustqliteConnection;
 use crate::shared::error::AppErr;
 use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
+use uuid::Uuid;
 
 pub struct SqliteTaskQueries<'a> {
     conn: &'a rusqlite::Connection,
@@ -19,7 +20,7 @@ impl<'a> TaskQueries for SqliteTaskQueries<'a> {
     fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, title, completed, project_id FROM todos ORDER BY id")?;
+            .prepare("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")?;
         let todos = stmt
             .query_map([], |row| {
                 Ok(Todo {
@@ -35,7 +36,7 @@ impl<'a> TaskQueries for SqliteTaskQueries<'a> {
 
     fn get_todos_without_project(&self) -> Result<Vec<Todo>, AppErr> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY id",
+            "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY rowid",
         )?;
         let todos = stmt
             .query_map([], |row| {
@@ -50,9 +51,9 @@ impl<'a> TaskQueries for SqliteTaskQueries<'a> {
         Ok(todos)
     }
 
-    fn get_todos_by_project(&self, project_id: i64) -> Result<Vec<Todo>, AppErr> {
+    fn get_todos_by_project(&self, project_id: Uuid) -> Result<Vec<Todo>, AppErr> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY id",
+            "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY rowid",
         )?;
         let todos = stmt
             .query_map([project_id], |row| {

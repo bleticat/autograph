@@ -3,11 +3,12 @@ pub mod commands;
 pub mod ports;
 
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Todo {
-    pub id: i64,
+    pub id: Uuid,
     pub title: String,
     pub completed: bool,
-    pub project_id: Option<i64>,
+    pub project_id: Option<Uuid>,
 }

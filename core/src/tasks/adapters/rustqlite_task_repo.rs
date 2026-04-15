@@ -2,6 +2,7 @@ use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
 use crate::shared::error::AppErr;
 use crate::tasks::ports::task_repo::TodoRepository;
 use crate::tasks::Todo;
+use uuid::Uuid;
 
 pub struct SqliteTodoRepository<'a> {
     conn: &'a rusqlite::Connection,
@@ -16,7 +17,7 @@ impl<'a> From<RustqliteTransaction<'a>> for SqliteTodoRepository<'a> {
 impl<'a> TodoRepository for SqliteTodoRepository<'a> {
     type Tx = RustqliteTransaction<'a>;
 
-    fn get(&self, id: i64) -> Result<Option<Todo>, AppErr> {
+    fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
         let mut stmt = self
             .conn
             .prepare("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")?;
@@ -32,13 +33,14 @@ impl<'a> TodoRepository for SqliteTodoRepository<'a> {
         }
     }
 
-    fn save(&self, todo: &Todo) -> Result<i64, AppErr> {
-        if todo.id == 0 {
+    fn save(&self, todo: &Todo) -> Result<Uuid, AppErr> {
+        if todo.id.is_nil() {
+            let id = Uuid::new_v4();
             self.conn.execute(
-                "INSERT INTO todos (title, completed, project_id) VALUES (?1, ?2, ?3)",
-                rusqlite::params![todo.title, todo.completed as i32, todo.project_id],
+                "INSERT INTO todos (id, title, completed, project_id) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![id, todo.title, todo.completed as i32, todo.project_id],
             )?;
-            Ok(self.conn.last_insert_rowid())
+            Ok(id)
         } else {
             self.conn.execute(
                 "UPDATE todos SET title = ?1, completed = ?2, project_id = ?3 WHERE id = ?4",
@@ -48,7 +50,7 @@ impl<'a> TodoRepository for SqliteTodoRepository<'a> {
         }
     }
 
-    fn delete(&self, id: i64) -> Result<(), AppErr> {
+    fn delete(&self, id: Uuid) -> Result<(), AppErr> {
         self.conn.execute("DELETE FROM todos WHERE id = ?1", [id])?;
         Ok(())
     }

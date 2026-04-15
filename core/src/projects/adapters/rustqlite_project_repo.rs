@@ -2,6 +2,7 @@ use crate::projects::ports::project_repo::ProjectRepository;
 use crate::projects::Project;
 use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
 use crate::shared::error::AppErr;
+use uuid::Uuid;
 
 pub struct SqliteProjectRepository<'a> {
     conn: &'a rusqlite::Connection,
@@ -16,7 +17,7 @@ impl<'a> From<RustqliteTransaction<'a>> for SqliteProjectRepository<'a> {
 impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
     type Tx = RustqliteTransaction<'a>;
 
-    fn get(&self, id: i64) -> Result<Option<Project>, AppErr> {
+    fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
         let mut stmt = self
             .conn
             .prepare("SELECT id, title FROM projects WHERE id = ?1")?;
@@ -30,11 +31,14 @@ impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
         }
     }
 
-    fn save(&self, project: &Project) -> Result<i64, AppErr> {
-        if project.id == 0 {
-            self.conn
-                .execute("INSERT INTO projects (title) VALUES (?1)", [&project.title])?;
-            Ok(self.conn.last_insert_rowid())
+    fn save(&self, project: &Project) -> Result<Uuid, AppErr> {
+        if project.id.is_nil() {
+            let id = Uuid::new_v4();
+            self.conn.execute(
+                "INSERT INTO projects (id, title) VALUES (?1, ?2)",
+                rusqlite::params![id, project.title],
+            )?;
+            Ok(id)
         } else {
             self.conn.execute(
                 "UPDATE projects SET title = ?1 WHERE id = ?2",
@@ -44,7 +48,7 @@ impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
         }
     }
 
-    fn delete(&self, id: i64) -> Result<(), AppErr> {
+    fn delete(&self, id: Uuid) -> Result<(), AppErr> {
         self.conn
             .execute("DELETE FROM projects WHERE id = ?1", [id])?;
         Ok(())

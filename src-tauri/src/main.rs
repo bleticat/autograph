@@ -35,7 +35,10 @@ fn get_todos_without_project(state: State<AppState>) -> Result<Vec<Todo>, String
 }
 
 #[tauri::command]
-fn get_todos_by_project(project_id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
+fn get_todos_by_project(project_id: String, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let project_id = project_id
+        .parse()
+        .map_err(|e| format!("Invalid UUID for project_id: {e}"))?;
     let db = state.db.lock().unwrap();
     QueryAdapter::from(db.conn())
         .get_todos_by_project(project_id)
@@ -43,7 +46,17 @@ fn get_todos_by_project(project_id: i64, state: State<AppState>) -> Result<Vec<T
 }
 
 #[tauri::command]
-fn add_todo(title: String, project_id: Option<i64>, state: State<AppState>) -> Result<Vec<Todo>, String> {
+fn add_todo(
+    title: String,
+    project_id: Option<String>,
+    state: State<AppState>,
+) -> Result<Vec<Todo>, String> {
+    let project_id = project_id
+        .map(|id| {
+            id.parse()
+                .map_err(|e| format!("Invalid UUID for project_id: {e}"))
+        })
+        .transpose()?;
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
@@ -59,7 +72,10 @@ fn add_todo(title: String, project_id: Option<i64>, state: State<AppState>) -> R
 }
 
 #[tauri::command]
-fn toggle_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
+fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let id = id
+        .parse()
+        .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
@@ -72,7 +88,10 @@ fn toggle_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
 }
 
 #[tauri::command]
-fn delete_todo(id: i64, state: State<AppState>) -> Result<Vec<Todo>, String> {
+fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> {
+    let id = id
+        .parse()
+        .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
