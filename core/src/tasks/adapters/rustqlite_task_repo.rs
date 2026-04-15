@@ -43,10 +43,13 @@ impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
             )?;
             Ok(id)
         } else {
-            self.conn.execute(
+            let updated = self.conn.execute(
                 "UPDATE todos SET title = ?1, completed = ?2, project_id = ?3 WHERE id = ?4",
-                rusqlite::params![todo.title.as_str(), todo.completed as i32, todo.project_id, todo.id],
+                rusqlite::params![todo.title, todo.completed as i32, todo.project_id, todo.id],
             )?;
+            if updated == 0 {
+                return Err(rusqlite::Error::QueryReturnedNoRows.into());
+            }
             Ok(todo.id)
         }
     }
