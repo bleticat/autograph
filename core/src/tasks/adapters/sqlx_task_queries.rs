@@ -2,7 +2,6 @@ use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
-use futures::executor::block_on;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -19,13 +18,12 @@ impl From<SqlxConnection> for SqliteTaskQueries {
 impl TaskQueries for SqliteTaskQueries {
     type Conn = SqlxConnection;
 
-    fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
+    async fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
         let conn = self.conn.raw();
         let mut conn = conn.borrow_mut();
-        let rows = block_on(
-            sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")
-                .fetch_all(&mut *conn),
-        )?;
+        let rows = sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")
+            .fetch_all(&mut *conn)
+            .await?;
         let todos = rows
             .into_iter()
             .map(|row| Todo {
@@ -38,15 +36,14 @@ impl TaskQueries for SqliteTaskQueries {
         Ok(todos)
     }
 
-    fn get_todos_without_project(&self) -> Result<Vec<Todo>, AppErr> {
+    async fn get_todos_without_project(&self) -> Result<Vec<Todo>, AppErr> {
         let conn = self.conn.raw();
         let mut conn = conn.borrow_mut();
-        let rows = block_on(
-            sqlx::query(
-                "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY rowid",
-            )
-            .fetch_all(&mut *conn),
-        )?;
+        let rows = sqlx::query(
+            "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY rowid",
+        )
+        .fetch_all(&mut *conn)
+        .await?;
         let todos = rows
             .into_iter()
             .map(|row| Todo {
@@ -59,16 +56,15 @@ impl TaskQueries for SqliteTaskQueries {
         Ok(todos)
     }
 
-    fn get_todos_by_project(&self, project_id: Uuid) -> Result<Vec<Todo>, AppErr> {
+    async fn get_todos_by_project(&self, project_id: Uuid) -> Result<Vec<Todo>, AppErr> {
         let conn = self.conn.raw();
         let mut conn = conn.borrow_mut();
-        let rows = block_on(
-            sqlx::query(
-                "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY rowid",
-            )
-            .bind(project_id)
-            .fetch_all(&mut *conn),
-        )?;
+        let rows = sqlx::query(
+            "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY rowid",
+        )
+        .bind(project_id)
+        .fetch_all(&mut *conn)
+        .await?;
         let todos = rows
             .into_iter()
             .map(|row| Todo {

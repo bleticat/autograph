@@ -13,9 +13,7 @@ fn fresh_db() -> SqlxDatabase {
 #[test]
 fn empty_database_returns_no_projects() {
     let db = fresh_db();
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
-        .unwrap();
+    let projects = block_on(SqliteProjectQueries::from(db.conn()).get_all_projects()).unwrap();
     assert!(projects.is_empty());
 }
 
@@ -27,9 +25,7 @@ fn add_single_project() {
         block_on(ProjectCommands::new(&repo).add("My Project"))
     })
     .unwrap();
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
-        .unwrap();
+    let projects = block_on(SqliteProjectQueries::from(db.conn()).get_all_projects()).unwrap();
     assert_eq!(projects.len(), 1);
     assert_eq!(projects[0].title, "My Project");
 }
@@ -44,9 +40,7 @@ fn add_multiple_projects_preserves_order() {
         })
         .unwrap();
     }
-    let projects = SqliteProjectQueries::from(db.conn())
-        .get_all_projects()
-        .unwrap();
+    let projects = block_on(SqliteProjectQueries::from(db.conn()).get_all_projects()).unwrap();
     assert_eq!(projects.len(), 3);
     assert_eq!(projects[0].title, "Alpha");
     assert_eq!(projects[1].title, "Beta");
@@ -61,9 +55,7 @@ fn todos_without_project_by_default() {
         block_on(TaskCommands::new(&repo).add("inbox task"))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
-        .unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_todos_without_project()).unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "inbox task");
     assert!(todos[0].project_id.is_none());
@@ -85,16 +77,14 @@ fn add_todo_with_project() {
     })
     .unwrap();
 
-    let todos_by_project = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(project_id)
-        .unwrap();
+    let todos_by_project =
+        block_on(SqliteTaskQueries::from(db.conn()).get_todos_by_project(project_id)).unwrap();
     assert_eq!(todos_by_project.len(), 1);
     assert_eq!(todos_by_project[0].title, "write report");
     assert_eq!(todos_by_project[0].project_id, Some(project_id));
 
-    let todos_without = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
-        .unwrap();
+    let todos_without =
+        block_on(SqliteTaskQueries::from(db.conn()).get_todos_without_project()).unwrap();
     assert!(todos_without.is_empty());
 }
 
@@ -130,21 +120,16 @@ fn tasks_are_filtered_by_project() {
     })
     .unwrap();
 
-    let p1_todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(p1)
-        .unwrap();
+    let p1_todos = block_on(SqliteTaskQueries::from(db.conn()).get_todos_by_project(p1)).unwrap();
     assert_eq!(p1_todos.len(), 1);
     assert_eq!(p1_todos[0].title, "task for A");
 
-    let p2_todos = SqliteTaskQueries::from(db.conn())
-        .get_todos_by_project(p2)
-        .unwrap();
+    let p2_todos = block_on(SqliteTaskQueries::from(db.conn()).get_todos_by_project(p2)).unwrap();
     assert_eq!(p2_todos.len(), 1);
     assert_eq!(p2_todos[0].title, "task for B");
 
-    let no_project = SqliteTaskQueries::from(db.conn())
-        .get_todos_without_project()
-        .unwrap();
+    let no_project =
+        block_on(SqliteTaskQueries::from(db.conn()).get_todos_without_project()).unwrap();
     assert_eq!(no_project.len(), 1);
     assert_eq!(no_project[0].title, "no project task");
 }

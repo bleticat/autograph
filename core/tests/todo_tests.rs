@@ -13,7 +13,7 @@ fn fresh_db() -> SqlxDatabase {
 #[test]
 fn empty_database_returns_no_todos() {
     let db = fresh_db();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert!(todos.is_empty());
 }
 
@@ -25,7 +25,7 @@ fn add_single_todo() {
         block_on(TaskCommands::new(&repo).add("buy milk"))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "buy milk");
     assert!(!todos[0].completed);
@@ -49,7 +49,7 @@ fn add_multiple_todos_preserves_order() {
         block_on(TaskCommands::new(&repo).add("third"))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert_eq!(todos.len(), 3);
     assert_eq!(todos[0].title, "first");
     assert_eq!(todos[1].title, "second");
@@ -64,14 +64,14 @@ fn toggle_marks_completed() {
         block_on(TaskCommands::new(&repo).add("task"))
     })
     .unwrap();
-    let id = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap()[0].id;
+    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
 
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
         block_on(TaskCommands::new(&repo).toggle(id))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert!(todos[0].completed);
 }
 
@@ -83,7 +83,7 @@ fn toggle_twice_restores_incomplete() {
         block_on(TaskCommands::new(&repo).add("task"))
     })
     .unwrap();
-    let id = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap()[0].id;
+    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
 
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
@@ -95,7 +95,7 @@ fn toggle_twice_restores_incomplete() {
         block_on(TaskCommands::new(&repo).toggle(id))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert!(!todos[0].completed);
 }
 
@@ -107,14 +107,14 @@ fn delete_removes_todo() {
         block_on(TaskCommands::new(&repo).add("to delete"))
     })
     .unwrap();
-    let id = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap()[0].id;
+    let id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
 
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
         block_on(TaskCommands::new(&repo).delete(id))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert!(todos.is_empty());
 }
 
@@ -131,7 +131,7 @@ fn delete_only_target_todo() {
         block_on(TaskCommands::new(&repo).add("remove"))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     let remove_id = todos[1].id;
 
     db.transaction(|tx| {
@@ -139,7 +139,7 @@ fn delete_only_target_todo() {
         block_on(TaskCommands::new(&repo).delete(remove_id))
     })
     .unwrap();
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "keep");
 }
@@ -152,8 +152,7 @@ fn toggle_nonexistent_id_is_noop() {
         block_on(TaskCommands::new(&repo).toggle(Uuid::new_v4()))
     })
     .unwrap();
-    assert!(SqliteTaskQueries::from(db.conn())
-        .get_all_todos()
+    assert!(block_on(SqliteTaskQueries::from(db.conn()).get_all_todos())
         .unwrap()
         .is_empty());
 }
@@ -172,8 +171,7 @@ fn delete_nonexistent_id_is_noop() {
     })
     .unwrap();
     assert_eq!(
-        SqliteTaskQueries::from(db.conn())
-            .get_all_todos()
+        block_on(SqliteTaskQueries::from(db.conn()).get_all_todos())
             .unwrap()
             .len(),
         1
@@ -188,7 +186,7 @@ fn ids_are_unique_after_delete() {
         block_on(TaskCommands::new(&repo).add("first"))
     })
     .unwrap();
-    let first_id = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap()[0].id;
+    let first_id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
         block_on(TaskCommands::new(&repo).delete(first_id))
@@ -200,7 +198,7 @@ fn ids_are_unique_after_delete() {
         block_on(TaskCommands::new(&repo).add("second"))
     })
     .unwrap();
-    let second_id = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap()[0].id;
+    let second_id = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap()[0].id;
     assert_ne!(first_id, second_id);
 }
 
@@ -226,7 +224,7 @@ fn full_workflow() {
     .unwrap();
 
     // Complete one
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
         block_on(TaskCommands::new(&repo).toggle(todos[1].id))
@@ -241,7 +239,7 @@ fn full_workflow() {
     .unwrap();
 
     // Verify final state
-    let todos = SqliteTaskQueries::from(db.conn()).get_all_todos().unwrap();
+    let todos = block_on(SqliteTaskQueries::from(db.conn()).get_all_todos()).unwrap();
     assert_eq!(todos.len(), 2);
     assert_eq!(todos[0].title, "buy groceries");
     assert!(!todos[0].completed);

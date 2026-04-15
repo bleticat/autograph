@@ -22,17 +22,13 @@ struct AppState {
 #[tauri::command]
 fn get_todos(state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
-    QueryAdapter::from(db.conn())
-        .get_all_todos()
-        .map_err(|e| e.to_string())
+    block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_todos_without_project(state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
-    QueryAdapter::from(db.conn())
-        .get_todos_without_project()
-        .map_err(|e| e.to_string())
+    block_on(QueryAdapter::from(db.conn()).get_todos_without_project()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -41,8 +37,7 @@ fn get_todos_by_project(project_id: String, state: State<AppState>) -> Result<Ve
         .parse()
         .map_err(|e| format!("Invalid UUID for project_id: {e}"))?;
     let db = state.db.lock().unwrap();
-    QueryAdapter::from(db.conn())
-        .get_todos_by_project(project_id)
+    block_on(QueryAdapter::from(db.conn()).get_todos_by_project(project_id))
         .map_err(|e| e.to_string())
 }
 
@@ -67,9 +62,7 @@ fn add_todo(
         }
     })
     .map_err(|e| e.to_string())?;
-    QueryAdapter::from(db.conn())
-        .get_all_todos()
-        .map_err(|e| e.to_string())
+    block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -83,9 +76,7 @@ fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         block_on(TaskCommands::new(&repo).toggle(id))
     })
     .map_err(|e| e.to_string())?;
-    QueryAdapter::from(db.conn())
-        .get_all_todos()
-        .map_err(|e| e.to_string())
+    block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -99,17 +90,13 @@ fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         block_on(TaskCommands::new(&repo).delete(id))
     })
     .map_err(|e| e.to_string())?;
-    QueryAdapter::from(db.conn())
-        .get_all_todos()
-        .map_err(|e| e.to_string())
+    block_on(QueryAdapter::from(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_projects(state: State<AppState>) -> Result<Vec<Project>, String> {
     let db = state.db.lock().unwrap();
-    ProjectQueryAdapter::from(db.conn())
-        .get_all_projects()
-        .map_err(|e| e.to_string())
+    block_on(ProjectQueryAdapter::from(db.conn()).get_all_projects()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -120,9 +107,7 @@ fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, St
         block_on(ProjectCommands::new(&repo).add(&title))
     })
     .map_err(|e| e.to_string())?;
-    ProjectQueryAdapter::from(db.conn())
-        .get_all_projects()
-        .map_err(|e| e.to_string())
+    block_on(ProjectQueryAdapter::from(db.conn()).get_all_projects()).map_err(|e| e.to_string())
 }
 
 fn main() {

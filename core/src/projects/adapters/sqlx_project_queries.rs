@@ -2,7 +2,6 @@ use crate::projects::ports::project_queries::ProjectQueries;
 use crate::projects::Project;
 use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
-use futures::executor::block_on;
 use sqlx::Row;
 
 pub struct SqliteProjectQueries {
@@ -18,12 +17,12 @@ impl From<SqlxConnection> for SqliteProjectQueries {
 impl ProjectQueries for SqliteProjectQueries {
     type Conn = SqlxConnection;
 
-    fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
+    async fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
         let conn = self.conn.raw();
         let mut conn = conn.borrow_mut();
-        let rows = block_on(
-            sqlx::query("SELECT id, title FROM projects ORDER BY rowid").fetch_all(&mut *conn),
-        )?;
+        let rows = sqlx::query("SELECT id, title FROM projects ORDER BY rowid")
+            .fetch_all(&mut *conn)
+            .await?;
         let projects = rows
             .into_iter()
             .map(|row| Project {
