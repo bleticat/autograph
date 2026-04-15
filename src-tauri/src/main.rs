@@ -1,18 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    Database, Project, ProjectCommands, ProjectQueries, RustqliteDatabase, SqliteProjectQueries,
-    SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
-    Todo,
+    Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries,
+    SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands,
+    TaskQueries, Todo,
 };
+use futures::executor::block_on;
 use std::sync::Mutex;
 use tauri::State;
 
-type Db = RustqliteDatabase;
-type QueryAdapter<'a> = SqliteTaskQueries<'a>;
-type RepoAdapter<'a> = SqliteTodoRepository<'a>;
-type ProjectQueryAdapter<'a> = SqliteProjectQueries<'a>;
-type ProjectRepoAdapter<'a> = SqliteProjectRepository<'a>;
+type Db = SqlxDatabase;
+type QueryAdapter = SqliteTaskQueries;
+type RepoAdapter = SqliteTodoRepository;
+type ProjectQueryAdapter = SqliteProjectQueries;
+type ProjectRepoAdapter = SqliteProjectRepository;
 
 struct AppState {
     db: Mutex<Db>,
@@ -61,8 +62,8 @@ fn add_todo(
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
         match project_id {
-            Some(pid) => TaskCommands::new(&repo).add_with_project(&title, pid),
-            None => TaskCommands::new(&repo).add(&title),
+            Some(pid) => block_on(TaskCommands::new(&repo).add_with_project(&title, pid)),
+            None => block_on(TaskCommands::new(&repo).add(&title)),
         }
     })
     .map_err(|e| e.to_string())?;
@@ -79,7 +80,7 @@ fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
-        TaskCommands::new(&repo).toggle(id)
+        block_on(TaskCommands::new(&repo).toggle(id))
     })
     .map_err(|e| e.to_string())?;
     QueryAdapter::from(db.conn())
@@ -95,7 +96,7 @@ fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = RepoAdapter::from(tx);
-        TaskCommands::new(&repo).delete(id)
+        block_on(TaskCommands::new(&repo).delete(id))
     })
     .map_err(|e| e.to_string())?;
     QueryAdapter::from(db.conn())
@@ -116,7 +117,7 @@ fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, St
     let db = state.db.lock().unwrap();
     db.transaction(|tx| {
         let repo = ProjectRepoAdapter::from(tx);
-        ProjectCommands::new(&repo).add(&title)
+        block_on(ProjectCommands::new(&repo).add(&title))
     })
     .map_err(|e| e.to_string())?;
     ProjectQueryAdapter::from(db.conn())

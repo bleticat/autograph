@@ -1,23 +1,23 @@
 use crate::projects::ports::project_repo::ProjectRepository;
 use crate::projects::Project;
-use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
+use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteProjectRepository {
-    conn: RustqliteTransaction,
+    conn: SqlxTransaction,
 }
 
-impl From<RustqliteTransaction> for SqliteProjectRepository {
-    fn from(tx: RustqliteTransaction) -> Self {
+impl From<SqlxTransaction> for SqliteProjectRepository {
+    fn from(tx: SqlxTransaction) -> Self {
         Self { conn: tx }
     }
 }
 
 impl Repository<Project> for SqliteProjectRepository {
-    type Tx = RustqliteTransaction;
+    type Tx = SqlxTransaction;
 
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
         let conn = self.conn.raw();

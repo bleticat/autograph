@@ -1,4 +1,4 @@
-use crate::shared::adapters::rustqlite_database::RustqliteConnection;
+use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
@@ -7,17 +7,17 @@ use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTaskQueries {
-    conn: RustqliteConnection,
+    conn: SqlxConnection,
 }
 
-impl From<RustqliteConnection> for SqliteTaskQueries {
-    fn from(conn: RustqliteConnection) -> Self {
+impl From<SqlxConnection> for SqliteTaskQueries {
+    fn from(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
 impl TaskQueries for SqliteTaskQueries {
-    type Conn = RustqliteConnection;
+    type Conn = SqlxConnection;
 
     fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
         let conn = self.conn.raw();

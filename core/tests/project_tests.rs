@@ -1,10 +1,11 @@
 use autograph_core::{
-    Database, ProjectCommands, ProjectQueries, RustqliteDatabase, SqliteProjectQueries,
-    SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, TaskCommands, TaskQueries,
+    Database, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteProjectRepository,
+    SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands, TaskQueries,
 };
+use futures::executor::block_on;
 
-fn fresh_db() -> RustqliteDatabase {
-    let db = RustqliteDatabase::open(":memory:").expect("failed to create in-memory db");
+fn fresh_db() -> SqlxDatabase {
+    let db = SqlxDatabase::open(":memory:").expect("failed to create in-memory db");
     db.migrate().expect("failed to run migrations");
     db
 }
@@ -23,7 +24,7 @@ fn add_single_project() {
     let db = fresh_db();
     db.transaction(|tx| {
         let repo = SqliteProjectRepository::from(tx);
-        ProjectCommands::new(&repo).add("My Project")
+        block_on(ProjectCommands::new(&repo).add("My Project"))
     })
     .unwrap();
     let projects = SqliteProjectQueries::from(db.conn())
@@ -39,7 +40,7 @@ fn add_multiple_projects_preserves_order() {
     for title in &["Alpha", "Beta", "Gamma"] {
         db.transaction(|tx| {
             let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add(title)
+            block_on(ProjectCommands::new(&repo).add(title))
         })
         .unwrap();
     }
@@ -57,7 +58,7 @@ fn todos_without_project_by_default() {
     let db = fresh_db();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add("inbox task")
+        block_on(TaskCommands::new(&repo).add("inbox task"))
     })
     .unwrap();
     let todos = SqliteTaskQueries::from(db.conn())
@@ -74,13 +75,13 @@ fn add_todo_with_project() {
     let project_id = db
         .transaction(|tx| {
             let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Work")
+            block_on(ProjectCommands::new(&repo).add("Work"))
         })
         .unwrap();
 
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("write report", project_id)
+        block_on(TaskCommands::new(&repo).add_with_project("write report", project_id))
     })
     .unwrap();
 
@@ -103,29 +104,29 @@ fn tasks_are_filtered_by_project() {
     let p1 = db
         .transaction(|tx| {
             let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Project A")
+            block_on(ProjectCommands::new(&repo).add("Project A"))
         })
         .unwrap();
     let p2 = db
         .transaction(|tx| {
             let repo = SqliteProjectRepository::from(tx);
-            ProjectCommands::new(&repo).add("Project B")
+            block_on(ProjectCommands::new(&repo).add("Project B"))
         })
         .unwrap();
 
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("task for A", p1)
+        block_on(TaskCommands::new(&repo).add_with_project("task for A", p1))
     })
     .unwrap();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add_with_project("task for B", p2)
+        block_on(TaskCommands::new(&repo).add_with_project("task for B", p2))
     })
     .unwrap();
     db.transaction(|tx| {
         let repo = SqliteTodoRepository::from(tx);
-        TaskCommands::new(&repo).add("no project task")
+        block_on(TaskCommands::new(&repo).add("no project task"))
     })
     .unwrap();
 

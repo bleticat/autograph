@@ -1,22 +1,22 @@
 use crate::projects::ports::project_queries::ProjectQueries;
 use crate::projects::Project;
-use crate::shared::adapters::rustqlite_database::RustqliteConnection;
+use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use futures::executor::block_on;
 use sqlx::Row;
 
 pub struct SqliteProjectQueries {
-    conn: RustqliteConnection,
+    conn: SqlxConnection,
 }
 
-impl From<RustqliteConnection> for SqliteProjectQueries {
-    fn from(conn: RustqliteConnection) -> Self {
+impl From<SqlxConnection> for SqliteProjectQueries {
+    fn from(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
 impl ProjectQueries for SqliteProjectQueries {
-    type Conn = RustqliteConnection;
+    type Conn = SqlxConnection;
 
     fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
         let conn = self.conn.raw();
