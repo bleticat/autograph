@@ -5,9 +5,7 @@ pub mod ports;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Todo {
+pub struct Project {
     pub id: i64,
     pub title: String,
-    pub completed: bool,
-    pub project_id: Option<i64>,
 }

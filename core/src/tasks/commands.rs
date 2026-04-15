@@ -14,6 +14,10 @@ impl<'a, R: TodoRepository> TaskCommands<'a, R> {
         self.tasks.add(title)
     }
 
+    pub fn add_with_project(&self, title: &str, project_id: i64) -> Result<i64, AppErr> {
+        self.tasks.add_with_project(title, project_id)
+    }
+
     pub fn toggle(&self, id: i64) -> Result<(), AppErr> {
         self.tasks.toggle(id)
     }

@@ -32,10 +32,15 @@ pub struct RustqliteDatabase {
 impl RustqliteDatabase {
     pub fn migrate(&self) -> Result<(), AppErr> {
         self.conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS todos (
+            "CREATE TABLE IF NOT EXISTS projects (
                 id    INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                completed INTEGER NOT NULL DEFAULT 0
+                title TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS todos (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                completed  INTEGER NOT NULL DEFAULT 0,
+                project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL
             );",
         )?;
         Ok(())
@@ -48,6 +53,7 @@ impl Database for RustqliteDatabase {
 
     fn open(path: &str) -> Result<Self, AppErr> {
         let conn = rusqlite::Connection::open(path)?;
+        conn.execute_batch("PRAGMA foreign_keys = ON")?;
         Ok(Self { conn })
     }
 
