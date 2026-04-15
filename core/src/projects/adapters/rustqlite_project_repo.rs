@@ -1,7 +1,7 @@
-use crate::projects::ports::project_repo::ProjectRepository;
 use crate::projects::Project;
 use crate::shared::adapters::rustqlite_database::RustqliteTransaction;
 use crate::shared::error::AppErr;
+use crate::shared::ports::repository::Repository;
 use uuid::Uuid;
 
 pub struct SqliteProjectRepository<'a> {
@@ -14,7 +14,7 @@ impl<'a> From<RustqliteTransaction<'a>> for SqliteProjectRepository<'a> {
     }
 }
 
-impl<'a> ProjectRepository for SqliteProjectRepository<'a> {
+impl<'a> Repository<Project, Uuid> for SqliteProjectRepository<'a> {
     type Tx = RustqliteTransaction<'a>;
 
     fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
