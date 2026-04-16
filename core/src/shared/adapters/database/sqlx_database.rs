@@ -6,11 +6,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub type SqlxConn = sqlx::SqlitePool;
-pub type SqlxTx = Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>;
+pub type SqlxConnection = sqlx::SqlitePool;
+pub type SqlxTransaction = Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>;
 
 pub struct SqlxDatabase {
-    pool: SqlxConn,
+    pool: SqlxConnection,
 }
 
 impl SqlxDatabase {
@@ -23,8 +23,8 @@ impl SqlxDatabase {
 }
 
 impl Database for SqlxDatabase {
-    type Conn = SqlxConn;
-    type Tx = SqlxTx;
+    type Conn = SqlxConnection;
+    type Tx = SqlxTransaction;
 
     async fn open(path: &str) -> Result<Self, AppErr> {
         let path = path.to_owned();
@@ -52,19 +52,20 @@ impl Database for SqlxDatabase {
         Ok(Self { pool })
     }
 
-    fn conn(&self) -> SqlxConn {
+    fn conn(&self) -> SqlxConnection {
         self.pool.clone()
     }
 
     async fn transaction<'a, T, F, Fut>(&'a self, f: F) -> Result<T, AppErr>
     where
         T: Send + 'a,
-        F: FnOnce(Arc<SqlxTx>) -> Fut + Send + 'a,
+        F: FnOnce(Arc<SqlxTransaction>) -> Fut + Send + 'a,
         Fut: Future<Output = Result<T, AppErr>> + Send + 'a,
     {
         let tx = Arc::new(Mutex::new(self.pool.begin().await?));
         let val = f(Arc::clone(&tx)).await?;
-        let tx = Arc::try_unwrap(tx).ok()
+        let tx = Arc::try_unwrap(tx)
+            .ok()
             .expect("transaction Arc should have no other owners");
         tx.into_inner().commit().await?;
         Ok(val)

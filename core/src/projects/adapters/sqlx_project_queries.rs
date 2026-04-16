@@ -1,15 +1,15 @@
 use crate::projects::Project;
 use crate::projects::ports::project_queries::ProjectQueries;
-use crate::shared::adapters::database::sqlx_database::SqlxConn;
+use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
 
 pub struct SqliteProjectQueries {
-    conn: SqlxConn,
+    conn: SqlxConnection,
 }
 
 impl SqliteProjectQueries {
-    pub fn new(conn: SqlxConn) -> Self {
+    pub fn new(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }

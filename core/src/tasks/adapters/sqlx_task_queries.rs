@@ -1,16 +1,16 @@
-use crate::shared::adapters::database::sqlx_database::SqlxConn;
+use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
-use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
+use crate::tasks::ports::task_queries::TaskQueries;
 use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTaskQueries {
-    conn: SqlxConn,
+    conn: SqlxConnection,
 }
 
 impl SqliteTaskQueries {
-    pub fn new(conn: SqlxConn) -> Self {
+    pub fn new(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }

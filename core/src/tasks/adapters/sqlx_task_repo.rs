@@ -1,4 +1,4 @@
-use crate::shared::adapters::database::sqlx_database::SqlxTx;
+use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::tasks::Todo;
@@ -6,11 +6,11 @@ use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTodoRepository<'a> {
-    tx: &'a SqlxTx,
+    tx: &'a SqlxTransaction,
 }
 
 impl<'a> SqliteTodoRepository<'a> {
-    pub fn new(tx: &'a SqlxTx) -> Self {
+    pub fn new(tx: &'a SqlxTransaction) -> Self {
         Self { tx }
     }
 }
