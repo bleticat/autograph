@@ -6,26 +6,29 @@ use autograph_core::{
     TaskQueries, Todo,
 };
 use std::sync::Mutex;
-use tauri::{async_runtime::block_on, State};
+use tauri::{State, async_runtime::block_on};
 
-type Db = SqlxDatabase;
-type QueryAdapter = SqliteTaskQueries;
+type DatabaseAdapter = SqlxDatabase;
+type TodoRepoAdapter<'a> = SqliteTodoRepository<'a>;
+type TaskQueryAdapter = SqliteTaskQueries;
+type ProjectRepoAdapter<'a> = SqliteProjectRepository<'a>;
 type ProjectQueryAdapter = SqliteProjectQueries;
 
 struct AppState {
-    db: Mutex<Db>,
+    db: Mutex<DatabaseAdapter>,
 }
 
 #[tauri::command]
 fn get_todos(state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
-    block_on(QueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
+    block_on(TaskQueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn get_todos_without_project(state: State<AppState>) -> Result<Vec<Todo>, String> {
     let db = state.db.lock().unwrap();
-    block_on(QueryAdapter::new(db.conn()).get_todos_without_project()).map_err(|e| e.to_string())
+    block_on(TaskQueryAdapter::new(db.conn()).get_todos_without_project())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -34,7 +37,7 @@ fn get_todos_by_project(project_id: String, state: State<AppState>) -> Result<Ve
         .parse()
         .map_err(|e| format!("Invalid UUID for project_id: {e}"))?;
     let db = state.db.lock().unwrap();
-    block_on(QueryAdapter::new(db.conn()).get_todos_by_project(project_id))
+    block_on(TaskQueryAdapter::new(db.conn()).get_todos_by_project(project_id))
         .map_err(|e| e.to_string())
 }
 
@@ -52,14 +55,14 @@ fn add_todo(
         .transpose()?;
     let db = state.db.lock().unwrap();
     block_on(db.transaction(async |tx| {
-        let repo = SqliteTodoRepository::new(tx);
+        let repo = TodoRepoAdapter::new(tx);
         match project_id {
             Some(pid) => TaskCommands::new(&repo).add_with_project(&title, pid).await,
             None => TaskCommands::new(&repo).add(&title).await,
         }
     }))
     .map_err(|e| e.to_string())?;
-    block_on(QueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
+    block_on(TaskQueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -69,11 +72,11 @@ fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
     block_on(db.transaction(async |tx| {
-        let repo = SqliteTodoRepository::new(tx);
+        let repo = TodoRepoAdapter::new(tx);
         TaskCommands::new(&repo).toggle(id).await
     }))
     .map_err(|e| e.to_string())?;
-    block_on(QueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
+    block_on(TaskQueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -83,11 +86,11 @@ fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
     block_on(db.transaction(async |tx| {
-        let repo = SqliteTodoRepository::new(tx);
+        let repo = TodoRepoAdapter::new(tx);
         TaskCommands::new(&repo).delete(id).await
     }))
     .map_err(|e| e.to_string())?;
-    block_on(QueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
+    block_on(TaskQueryAdapter::new(db.conn()).get_all_todos()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -100,7 +103,7 @@ fn get_projects(state: State<AppState>) -> Result<Vec<Project>, String> {
 fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, String> {
     let db = state.db.lock().unwrap();
     block_on(db.transaction(async |tx| {
-        let repo = SqliteProjectRepository::new(tx);
+        let repo = ProjectRepoAdapter::new(tx);
         ProjectCommands::new(&repo).add(&title).await
     }))
     .map_err(|e| e.to_string())?;
@@ -108,7 +111,8 @@ fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, St
 }
 
 fn main() {
-    let db = block_on(Db::open("../db.sqlite")).expect("Failed to initialize database");
+    let db =
+        block_on(DatabaseAdapter::open("../db.sqlite")).expect("Failed to initialize database");
     block_on(db.migrate()).expect("Failed to migrate database");
 
     tauri::Builder::default()
