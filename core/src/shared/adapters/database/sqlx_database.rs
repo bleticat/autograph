@@ -4,38 +4,8 @@ use sqlx::sqlite::SqlitePoolOptions;
 use std::str::FromStr;
 use tokio::sync::Mutex;
 
-#[derive(Clone)]
-pub struct SqlxConnection(sqlx::SqlitePool);
-
-impl SqlxConnection {
-    pub(crate) fn raw(&self) -> sqlx::SqlitePool {
-        self.0.clone()
-    }
-}
-
-pub struct SqlxTransaction(Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>);
-
-impl SqlxTransaction {
-    fn new(tx: sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
-        Self(Mutex::new(tx))
-    }
-
-    pub(crate) async fn acquire(
-        &self,
-    ) -> tokio::sync::MutexGuard<'_, sqlx::Transaction<'static, sqlx::Sqlite>> {
-        self.0.lock().await
-    }
-
-    async fn commit(self) -> Result<(), AppErr> {
-        self.0.into_inner().commit().await?;
-        Ok(())
-    }
-
-    async fn rollback(self) -> Result<(), AppErr> {
-        self.0.into_inner().rollback().await?;
-        Ok(())
-    }
-}
+pub type SqlxConn = sqlx::SqlitePool;
+pub type SqlxTx = Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>;
 
 pub struct SqlxDatabase {
     pool: sqlx::SqlitePool,
@@ -51,8 +21,8 @@ impl SqlxDatabase {
 }
 
 impl Database for SqlxDatabase {
-    type Conn<'a> = SqlxConnection;
-    type Tx<'a> = SqlxTransaction;
+    type Conn<'a> = SqlxConn;
+    type Tx<'a> = SqlxTx;
 
     async fn open(path: &str) -> Result<Self, AppErr> {
         let path = path.to_owned();
@@ -80,22 +50,22 @@ impl Database for SqlxDatabase {
         Ok(Self { pool })
     }
 
-    fn conn(&self) -> SqlxConnection {
-        SqlxConnection(self.pool.clone())
+    fn conn(&self) -> SqlxConn {
+        self.pool.clone()
     }
 
     async fn transaction<'a, T: 'a>(
         &'a self,
-        f: impl AsyncFnOnce(&SqlxTransaction) -> Result<T, AppErr> + 'a,
+        f: impl AsyncFnOnce(&SqlxTx) -> Result<T, AppErr> + 'a,
     ) -> Result<T, AppErr> {
-        let tx = SqlxTransaction::new(self.pool.begin().await?);
+        let tx = Mutex::new(self.pool.begin().await?);
         match f(&tx).await {
             Ok(val) => {
-                tx.commit().await?;
+                tx.into_inner().commit().await?;
                 Ok(val)
             }
             Err(e) => {
-                let _ = tx.rollback().await;
+                let _ = tx.into_inner().rollback().await;
                 Err(e)
             }
         }

@@ -1,23 +1,23 @@
 use crate::projects::Project;
-use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
+use crate::shared::adapters::database::sqlx_database::SqlxTx;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteProjectRepository<'a> {
-    conn: &'a SqlxTransaction,
+    tx: &'a SqlxTx,
 }
 
 impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
-    type Tx = SqlxTransaction;
+    type Tx = SqlxTx;
 
     fn bind(tx: &'a Self::Tx) -> Self {
-        Self { conn: tx }
+        Self { tx }
     }
 
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
             .bind(id)
             .fetch_optional(&mut **tx)
@@ -29,7 +29,7 @@ impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
     }
 
     async fn save(&self, project: &Project) -> Result<Uuid, AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         if project.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query("INSERT INTO projects (id, title) VALUES (?1, ?2)")
@@ -49,7 +49,7 @@ impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         sqlx::query("DELETE FROM projects WHERE id = ?1")
             .bind(id)
             .execute(&mut **tx)

@@ -1,4 +1,4 @@
-use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
+use crate::shared::adapters::database::sqlx_database::SqlxTx;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::tasks::Todo;
@@ -6,18 +6,18 @@ use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTodoRepository<'a> {
-    conn: &'a SqlxTransaction,
+    tx: &'a SqlxTx,
 }
 
 impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
-    type Tx = SqlxTransaction;
+    type Tx = SqlxTx;
 
     fn bind(tx: &'a Self::Tx) -> Self {
-        Self { conn: tx }
+        Self { tx }
     }
 
     async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
             .bind(id)
             .fetch_optional(&mut **tx)
@@ -31,7 +31,7 @@ impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
     }
 
     async fn save(&self, todo: &Todo) -> Result<Uuid, AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
@@ -63,7 +63,7 @@ impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let mut tx = self.conn.acquire().await;
+        let mut tx = self.tx.lock().await;
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
             .execute(&mut **tx)

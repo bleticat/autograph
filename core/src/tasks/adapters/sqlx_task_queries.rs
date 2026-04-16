@@ -1,4 +1,4 @@
-use crate::shared::adapters::database::sqlx_database::SqlxConnection;
+use crate::shared::adapters::database::sqlx_database::SqlxConn;
 use crate::shared::error::AppErr;
 use crate::shared::ports::queries::Queries;
 use crate::tasks::ports::task_queries::TaskQueries;
@@ -7,22 +7,21 @@ use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTaskQueries {
-    conn: SqlxConnection,
+    conn: SqlxConn,
 }
 
 impl Queries for SqliteTaskQueries {
-    type Conn = SqlxConnection;
+    type Conn = SqlxConn;
 
-    fn bind(conn: SqlxConnection) -> Self {
+    fn bind(conn: SqlxConn) -> Self {
         Self { conn }
     }
 }
 
 impl TaskQueries for SqliteTaskQueries {
     async fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
-        let conn = self.conn.raw();
         let rows = sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")
-            .fetch_all(&conn)
+            .fetch_all(&self.conn)
             .await?;
         let todos = rows
             .into_iter()
@@ -37,11 +36,10 @@ impl TaskQueries for SqliteTaskQueries {
     }
 
     async fn get_todos_without_project(&self) -> Result<Vec<Todo>, AppErr> {
-        let conn = self.conn.raw();
         let rows = sqlx::query(
             "SELECT id, title, completed, project_id FROM todos WHERE project_id IS NULL ORDER BY rowid",
         )
-        .fetch_all(&conn)
+        .fetch_all(&self.conn)
         .await?;
         let todos = rows
             .into_iter()
@@ -56,12 +54,11 @@ impl TaskQueries for SqliteTaskQueries {
     }
 
     async fn get_todos_by_project(&self, project_id: Uuid) -> Result<Vec<Todo>, AppErr> {
-        let conn = self.conn.raw();
         let rows = sqlx::query(
             "SELECT id, title, completed, project_id FROM todos WHERE project_id = ?1 ORDER BY rowid",
         )
         .bind(project_id)
-        .fetch_all(&conn)
+        .fetch_all(&self.conn)
         .await?;
         let todos = rows
             .into_iter()
