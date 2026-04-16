@@ -8,7 +8,7 @@ pub use projects::commands::ProjectCommands;
 pub use projects::ports::project_queries::ProjectQueries;
 pub use projects::ports::project_repo::ProjectRepository;
 pub use projects::Project;
-pub use shared::adapters::database::sqlx_database::{SqlxDatabase, SqlxTransaction};
+pub use shared::adapters::database::sqlx_database::SqlxDatabase;
 pub use shared::error::AppErr;
 pub use shared::ports::database::{Connection, Database, Transaction};
 pub use shared::ports::repository::Repository;

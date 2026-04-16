@@ -6,25 +6,19 @@ use crate::tasks::Todo;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqliteTodoRepository {
-    conn: SqlxTransaction,
+pub struct SqliteTodoRepository<'a> {
+    conn: &'a SqlxTransaction,
 }
 
-impl From<SqlxTransaction> for SqliteTodoRepository {
-    fn from(tx: SqlxTransaction) -> Self {
+impl<'a> SqliteTodoRepository<'a> {
+    pub fn new(tx: &'a SqlxTransaction) -> Self {
         Self { conn: tx }
     }
 }
 
-impl Repository<Todo> for SqliteTodoRepository {
-    type Tx = SqlxTransaction;
-
+impl Repository<Todo> for SqliteTodoRepository<'_> {
     async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
             .bind(id)
             .fetch_optional(&mut **tx)
@@ -38,11 +32,7 @@ impl Repository<Todo> for SqliteTodoRepository {
     }
 
     async fn save(&self, todo: &Todo) -> Result<Uuid, AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
@@ -74,11 +64,7 @@ impl Repository<Todo> for SqliteTodoRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
             .execute(&mut **tx)
@@ -87,4 +73,4 @@ impl Repository<Todo> for SqliteTodoRepository {
     }
 }
 
-impl TodoRepository for SqliteTodoRepository {}
+impl TodoRepository for SqliteTodoRepository<'_> {}

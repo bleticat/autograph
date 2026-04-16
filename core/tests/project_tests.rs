@@ -23,8 +23,8 @@ async fn empty_database_returns_no_projects() {
 #[tokio::test]
 async fn add_single_project() {
     let db = fresh_db().await;
-    (db.transaction(|tx| async move {
-        let repo = SqliteProjectRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteProjectRepository::new(tx);
         ProjectCommands::new(&repo).add("My Project").await
     }))
     .await
@@ -40,8 +40,8 @@ async fn add_single_project() {
 async fn add_multiple_projects_preserves_order() {
     let db = fresh_db().await;
     for title in &["Alpha", "Beta", "Gamma"] {
-        (db.transaction(|tx| async move {
-            let repo = SqliteProjectRepository::from(tx);
+        (db.transaction(async |tx| {
+            let repo = SqliteProjectRepository::new(tx);
             ProjectCommands::new(&repo).add(title).await
         }))
         .await
@@ -59,8 +59,8 @@ async fn add_multiple_projects_preserves_order() {
 #[tokio::test]
 async fn todos_without_project_by_default() {
     let db = fresh_db().await;
-    (db.transaction(|tx| async move {
-        let repo = SqliteTodoRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo).add("inbox task").await
     }))
     .await
@@ -76,15 +76,15 @@ async fn todos_without_project_by_default() {
 #[tokio::test]
 async fn add_todo_with_project() {
     let db = fresh_db().await;
-    let project_id = (db.transaction(|tx| async move {
-        let repo = SqliteProjectRepository::from(tx);
+    let project_id = (db.transaction(async |tx| {
+        let repo = SqliteProjectRepository::new(tx);
         ProjectCommands::new(&repo).add("Work").await
     }))
     .await
     .unwrap();
 
-    (db.transaction(|tx| async move {
-        let repo = SqliteTodoRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo)
             .add_with_project("write report", project_id)
             .await
@@ -108,37 +108,37 @@ async fn add_todo_with_project() {
 #[tokio::test]
 async fn tasks_are_filtered_by_project() {
     let db = fresh_db().await;
-    let p1 = (db.transaction(|tx| async move {
-        let repo = SqliteProjectRepository::from(tx);
+    let p1 = (db.transaction(async |tx| {
+        let repo = SqliteProjectRepository::new(tx);
         ProjectCommands::new(&repo).add("Project A").await
     }))
     .await
     .unwrap();
-    let p2 = (db.transaction(|tx| async move {
-        let repo = SqliteProjectRepository::from(tx);
+    let p2 = (db.transaction(async |tx| {
+        let repo = SqliteProjectRepository::new(tx);
         ProjectCommands::new(&repo).add("Project B").await
     }))
     .await
     .unwrap();
 
-    (db.transaction(|tx| async move {
-        let repo = SqliteTodoRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo)
             .add_with_project("task for A", p1)
             .await
     }))
     .await
     .unwrap();
-    (db.transaction(|tx| async move {
-        let repo = SqliteTodoRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo)
             .add_with_project("task for B", p2)
             .await
     }))
     .await
     .unwrap();
-    (db.transaction(|tx| async move {
-        let repo = SqliteTodoRepository::from(tx);
+    (db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo).add("no project task").await
     }))
     .await

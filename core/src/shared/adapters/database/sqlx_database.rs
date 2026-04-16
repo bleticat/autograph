@@ -1,9 +1,7 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Connection, Database, Transaction};
 use sqlx::sqlite::SqlitePoolOptions;
-use std::future::Future;
 use std::str::FromStr;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -17,38 +15,31 @@ impl SqlxConnection {
 
 impl Connection for SqlxConnection {}
 
-#[derive(Clone)]
-pub struct SqlxTransaction(Arc<Mutex<Option<sqlx::Transaction<'static, sqlx::Sqlite>>>>);
+pub struct SqlxTransaction(Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>);
 
 impl SqlxTransaction {
     fn new(tx: sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
-        Self(Arc::new(Mutex::new(Some(tx))))
+        Self(Mutex::new(tx))
     }
 
-    pub(crate) fn raw(&self) -> Arc<Mutex<Option<sqlx::Transaction<'static, sqlx::Sqlite>>>> {
-        self.0.clone()
+    pub(crate) async fn acquire(
+        &self,
+    ) -> tokio::sync::MutexGuard<'_, sqlx::Transaction<'static, sqlx::Sqlite>> {
+        self.0.lock().await
     }
 
-    async fn commit(&self) -> Result<(), AppErr> {
-        let mut tx = self.0.lock().await;
-        if let Some(tx) = tx.take() {
-            tx.commit().await?;
-        }
+    async fn commit(self) -> Result<(), AppErr> {
+        self.0.into_inner().commit().await?;
         Ok(())
     }
 
-    async fn rollback(&self) -> Result<(), AppErr> {
-        let mut tx = self.0.lock().await;
-        if let Some(tx) = tx.take() {
-            tx.rollback().await?;
-        }
+    async fn rollback(self) -> Result<(), AppErr> {
+        self.0.into_inner().rollback().await?;
         Ok(())
     }
 }
 
-impl Transaction for SqlxTransaction {
-    type Conn = SqlxConnection;
-}
+impl Transaction for SqlxTransaction {}
 
 pub struct SqlxDatabase {
     pool: sqlx::SqlitePool,
@@ -76,13 +67,17 @@ impl Database for SqlxDatabase {
             format!("sqlite://{path}")
         };
 
-        let conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
+        let mut conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
             .foreign_keys(true)
             .create_if_missing(!is_memory);
+
+        if !is_memory {
+            conn_options = conn_options.journal_mode(sqlx::sqlite::SqliteJournalMode::Wal);
+        }
+
+        let max_conns = if is_memory { 1 } else { 4 };
         let pool = SqlitePoolOptions::new()
-            // Keep a single SQLite connection so in-memory DBs and transactional sequencing
-            // behave consistently across command/query adapters.
-            .max_connections(1)
+            .max_connections(max_conns)
             .connect_with(conn_options)
             .await?;
 
@@ -93,12 +88,12 @@ impl Database for SqlxDatabase {
         SqlxConnection(self.pool.clone())
     }
 
-    async fn transaction<T, F>(&self, f: impl FnOnce(SqlxTransaction) -> F) -> Result<T, AppErr>
-    where
-        F: Future<Output = Result<T, AppErr>>,
-    {
+    async fn transaction<'a, T: 'a>(
+        &'a self,
+        f: impl AsyncFnOnce(&SqlxTransaction) -> Result<T, AppErr> + 'a,
+    ) -> Result<T, AppErr> {
         let tx = SqlxTransaction::new(self.pool.begin().await?);
-        match f(tx.clone()).await {
+        match f(&tx).await {
             Ok(val) => {
                 tx.commit().await?;
                 Ok(val)

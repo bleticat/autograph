@@ -1,30 +1,24 @@
-use crate::projects::ports::project_repo::ProjectRepository;
 use crate::projects::Project;
+use crate::projects::ports::project_repo::ProjectRepository;
 use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqliteProjectRepository {
-    conn: SqlxTransaction,
+pub struct SqliteProjectRepository<'a> {
+    conn: &'a SqlxTransaction,
 }
 
-impl From<SqlxTransaction> for SqliteProjectRepository {
-    fn from(tx: SqlxTransaction) -> Self {
+impl<'a> SqliteProjectRepository<'a> {
+    pub fn new(tx: &'a SqlxTransaction) -> Self {
         Self { conn: tx }
     }
 }
 
-impl Repository<Project> for SqliteProjectRepository {
-    type Tx = SqlxTransaction;
-
+impl Repository<Project> for SqliteProjectRepository<'_> {
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
             .bind(id)
             .fetch_optional(&mut **tx)
@@ -36,11 +30,7 @@ impl Repository<Project> for SqliteProjectRepository {
     }
 
     async fn save(&self, project: &Project) -> Result<Uuid, AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         if project.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query("INSERT INTO projects (id, title) VALUES (?1, ?2)")
@@ -60,11 +50,7 @@ impl Repository<Project> for SqliteProjectRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let tx = self.conn.raw();
-        let mut tx = tx.lock().await;
-        let tx = tx
-            .as_mut()
-            .ok_or_else(|| sqlx::Error::Protocol("transaction already closed".into()))?;
+        let mut tx = self.conn.acquire().await;
         sqlx::query("DELETE FROM projects WHERE id = ?1")
             .bind(id)
             .execute(&mut **tx)
@@ -73,4 +59,4 @@ impl Repository<Project> for SqliteProjectRepository {
     }
 }
 
-impl ProjectRepository for SqliteProjectRepository {}
+impl ProjectRepository for SqliteProjectRepository<'_> {}

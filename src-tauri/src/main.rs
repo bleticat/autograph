@@ -10,9 +10,7 @@ use tauri::{async_runtime::block_on, State};
 
 type Db = SqlxDatabase;
 type QueryAdapter = SqliteTaskQueries;
-type RepoAdapter = SqliteTodoRepository;
 type ProjectQueryAdapter = SqliteProjectQueries;
-type ProjectRepoAdapter = SqliteProjectRepository;
 
 struct AppState {
     db: Mutex<Db>,
@@ -53,8 +51,8 @@ fn add_todo(
         })
         .transpose()?;
     let db = state.db.lock().unwrap();
-    block_on(db.transaction(|tx| async move {
-        let repo = RepoAdapter::from(tx);
+    block_on(db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         match project_id {
             Some(pid) => TaskCommands::new(&repo).add_with_project(&title, pid).await,
             None => TaskCommands::new(&repo).add(&title).await,
@@ -70,8 +68,8 @@ fn toggle_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .parse()
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
-    block_on(db.transaction(|tx| async move {
-        let repo = RepoAdapter::from(tx);
+    block_on(db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo).toggle(id).await
     }))
     .map_err(|e| e.to_string())?;
@@ -84,8 +82,8 @@ fn delete_todo(id: String, state: State<AppState>) -> Result<Vec<Todo>, String> 
         .parse()
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     let db = state.db.lock().unwrap();
-    block_on(db.transaction(|tx| async move {
-        let repo = RepoAdapter::from(tx);
+    block_on(db.transaction(async |tx| {
+        let repo = SqliteTodoRepository::new(tx);
         TaskCommands::new(&repo).delete(id).await
     }))
     .map_err(|e| e.to_string())?;
@@ -101,8 +99,8 @@ fn get_projects(state: State<AppState>) -> Result<Vec<Project>, String> {
 #[tauri::command]
 fn add_project(title: String, state: State<AppState>) -> Result<Vec<Project>, String> {
     let db = state.db.lock().unwrap();
-    block_on(db.transaction(|tx| async move {
-        let repo = ProjectRepoAdapter::from(tx);
+    block_on(db.transaction(async |tx| {
+        let repo = SqliteProjectRepository::new(tx);
         ProjectCommands::new(&repo).add(&title).await
     }))
     .map_err(|e| e.to_string())?;

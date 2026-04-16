@@ -1,11 +1,12 @@
 use crate::shared::error::AppErr;
-use crate::shared::ports::database::Transaction;
+use std::future::Future;
 use uuid::Uuid;
 
-#[allow(async_fn_in_trait)]
-pub trait Repository<Entity>: From<Self::Tx> {
-    type Tx: Transaction;
-    async fn get(&self, id: Uuid) -> Result<Option<Entity>, AppErr>;
-    async fn save(&self, entity: &Entity) -> Result<Uuid, AppErr>;
-    async fn delete(&self, id: Uuid) -> Result<(), AppErr>;
+pub trait Repository<Entity> {
+    fn get(&self, id: Uuid) -> impl Future<Output = Result<Option<Entity>, AppErr>> + Send + '_;
+    fn save<'a>(
+        &'a self,
+        entity: &'a Entity,
+    ) -> impl Future<Output = Result<Uuid, AppErr>> + Send + 'a;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<(), AppErr>> + Send + '_;
 }

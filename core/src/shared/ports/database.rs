@@ -3,11 +3,8 @@ use std::future::Future;
 
 pub trait Connection {}
 
-pub trait Transaction {
-    type Conn: Connection;
-}
+pub trait Transaction {}
 
-#[allow(async_fn_in_trait)]
 pub trait Database {
     type Conn<'a>: Connection
     where
@@ -16,11 +13,12 @@ pub trait Database {
     where
         Self: 'a;
 
-    async fn open(path: &str) -> Result<Self, AppErr>
+    fn open(path: &str) -> impl Future<Output = Result<Self, AppErr>> + Send + '_
     where
         Self: Sized;
     fn conn(&self) -> Self::Conn<'_>;
-    async fn transaction<T, F>(&self, f: impl FnOnce(Self::Tx<'_>) -> F) -> Result<T, AppErr>
-    where
-        F: Future<Output = Result<T, AppErr>>;
+    fn transaction<'a, T: 'a>(
+        &'a self,
+        f: impl AsyncFnOnce(&Self::Tx<'_>) -> Result<T, AppErr> + 'a,
+    ) -> impl Future<Output = Result<T, AppErr>> + 'a;
 }
