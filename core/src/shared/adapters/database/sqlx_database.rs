@@ -1,7 +1,9 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use sqlx::sqlite::SqlitePoolOptions;
+use std::future::Future;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub type SqlxConn = sqlx::SqlitePool;
@@ -21,8 +23,8 @@ impl SqlxDatabase {
 }
 
 impl Database for SqlxDatabase {
-    type Conn<'a> = SqlxConn;
-    type Tx<'a> = SqlxTx;
+    type Conn = SqlxConn;
+    type Tx = SqlxTx;
 
     async fn open(path: &str) -> Result<Self, AppErr> {
         let path = path.to_owned();
@@ -54,20 +56,17 @@ impl Database for SqlxDatabase {
         self.pool.clone()
     }
 
-    async fn transaction<'a, T: 'a>(
-        &'a self,
-        f: impl AsyncFnOnce(&SqlxTx) -> Result<T, AppErr> + 'a,
-    ) -> Result<T, AppErr> {
-        let tx = Mutex::new(self.pool.begin().await?);
-        match f(&tx).await {
-            Ok(val) => {
-                tx.into_inner().commit().await?;
-                Ok(val)
-            }
-            Err(e) => {
-                let _ = tx.into_inner().rollback().await;
-                Err(e)
-            }
-        }
+    async fn transaction<'a, T, F, Fut>(&'a self, f: F) -> Result<T, AppErr>
+    where
+        T: Send + 'a,
+        F: FnOnce(Arc<SqlxTx>) -> Fut + Send + 'a,
+        Fut: Future<Output = Result<T, AppErr>> + Send + 'a,
+    {
+        let tx = Arc::new(Mutex::new(self.pool.begin().await?));
+        let val = f(Arc::clone(&tx)).await?;
+        let tx = Arc::try_unwrap(tx).ok()
+            .expect("transaction Arc should have no other owners");
+        tx.into_inner().commit().await?;
+        Ok(val)
     }
 }
