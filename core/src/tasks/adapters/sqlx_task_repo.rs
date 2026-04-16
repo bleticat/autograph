@@ -1,7 +1,6 @@
 use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
-use crate::tasks::ports::task_repo::TodoRepository;
 use crate::tasks::Todo;
 use sqlx::Row;
 use uuid::Uuid;
@@ -72,5 +71,3 @@ impl Repository<Todo> for SqliteTodoRepository<'_> {
         Ok(())
     }
 }
-
-impl TodoRepository for SqliteTodoRepository<'_> {}

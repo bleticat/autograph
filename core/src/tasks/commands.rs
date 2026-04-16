@@ -1,13 +1,13 @@
-use super::ports::task_repo::TodoRepository;
 use crate::shared::error::AppErr;
+use crate::shared::ports::repository::Repository;
 use crate::tasks::Todo;
 use uuid::Uuid;
 
-pub struct TaskCommands<'a, R: TodoRepository> {
+pub struct TaskCommands<'a, R: Repository<Todo>> {
     tasks: &'a R,
 }
 
-impl<'a, R: TodoRepository> TaskCommands<'a, R> {
+impl<'a, R: Repository<Todo>> TaskCommands<'a, R> {
     pub fn new(tasks: &'a R) -> Self {
         Self { tasks }
     }

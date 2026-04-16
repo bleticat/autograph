@@ -1,13 +1,13 @@
-use crate::projects::ports::project_repo::ProjectRepository;
 use crate::projects::Project;
 use crate::shared::error::AppErr;
+use crate::shared::ports::repository::Repository;
 use uuid::Uuid;
 
-pub struct ProjectCommands<'a, R: ProjectRepository> {
+pub struct ProjectCommands<'a, R: Repository<Project>> {
     projects: &'a R,
 }
 
-impl<'a, R: ProjectRepository> ProjectCommands<'a, R> {
+impl<'a, R: Repository<Project>> ProjectCommands<'a, R> {
     pub fn new(projects: &'a R) -> Self {
         Self { projects }
     }

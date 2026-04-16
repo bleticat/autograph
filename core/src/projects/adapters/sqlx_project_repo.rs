@@ -1,5 +1,4 @@
 use crate::projects::Project;
-use crate::projects::ports::project_repo::ProjectRepository;
 use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
@@ -58,5 +57,3 @@ impl Repository<Project> for SqliteProjectRepository<'_> {
         Ok(())
     }
 }
-
-impl ProjectRepository for SqliteProjectRepository<'_> {}
