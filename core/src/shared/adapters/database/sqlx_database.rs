@@ -1,13 +1,34 @@
+use crate::projects::adapters::sqlx_project_repo::SqliteProjectRepository;
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
+use crate::shared::ports::unit_of_work::UnitOfWork;
+use crate::tasks::adapters::sqlx_task_repo::SqliteTodoRepository;
 use sqlx::sqlite::SqlitePoolOptions;
-use std::future::Future;
 use std::str::FromStr;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub type SqlxConnection = sqlx::SqlitePool;
-pub type SqlxTransaction = Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>;
+
+pub struct SqlxUnitOfWork {
+    tx: sqlx::Transaction<'static, sqlx::Sqlite>,
+}
+
+impl UnitOfWork for SqlxUnitOfWork {
+    type ProjectRepo<'a> = SqliteProjectRepository<'a> where Self: 'a;
+    type TaskRepo<'a> = SqliteTodoRepository<'a> where Self: 'a;
+
+    fn projects(&mut self) -> SqliteProjectRepository<'_> {
+        SqliteProjectRepository::new(&mut self.tx)
+    }
+
+    fn tasks(&mut self) -> SqliteTodoRepository<'_> {
+        SqliteTodoRepository::new(&mut self.tx)
+    }
+
+    async fn commit(self) -> Result<(), AppErr> {
+        self.tx.commit().await?;
+        Ok(())
+    }
+}
 
 pub struct SqlxDatabase {
     pool: SqlxConnection,
@@ -24,7 +45,7 @@ impl SqlxDatabase {
 
 impl Database for SqlxDatabase {
     type Conn = SqlxConnection;
-    type Tx = SqlxTransaction;
+    type Uow = SqlxUnitOfWork;
 
     async fn open(path: &str) -> Result<Self, AppErr> {
         let path = path.to_owned();
@@ -56,18 +77,13 @@ impl Database for SqlxDatabase {
         self.pool.clone()
     }
 
-    async fn transaction<'a, T, F, Fut>(&'a self, f: F) -> Result<T, AppErr>
-    where
-        T: Send + 'a,
-        F: FnOnce(Arc<SqlxTransaction>) -> Fut + Send + 'a,
-        Fut: Future<Output = Result<T, AppErr>> + Send + 'a,
-    {
-        let tx = Arc::new(Mutex::new(self.pool.begin().await?));
-        let val = f(Arc::clone(&tx)).await?;
-        let tx = Arc::try_unwrap(tx)
-            .ok()
-            .expect("transaction Arc should have no other owners");
-        tx.into_inner().commit().await?;
+    async fn transaction<'a, T: Send + 'a>(
+        &'a self,
+        f: impl AsyncFnOnce(&mut SqlxUnitOfWork) -> Result<T, AppErr> + Send + 'a,
+    ) -> Result<T, AppErr> {
+        let mut uow = self.pool.begin().await.map(|tx| SqlxUnitOfWork { tx })?;
+        let val = f(&mut uow).await?;
+        uow.commit().await?;
         Ok(val)
     }
 }

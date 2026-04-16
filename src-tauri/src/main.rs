@@ -1,16 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries,
-    SqliteProjectRepository, SqliteTaskQueries, SqliteTodoRepository, SqlxDatabase, TaskCommands,
-    TaskQueries, Todo,
+    Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteTaskQueries,
+    SqlxDatabase, TaskCommands, TaskQueries, Todo,
 };
 use tauri::{State, async_runtime::block_on};
 
 type DatabaseAdapter = SqlxDatabase;
-type TodoRepoAdapter<'a> = SqliteTodoRepository<'a>;
 type TaskQueryAdapter = SqliteTaskQueries;
-type ProjectRepoAdapter<'a> = SqliteProjectRepository<'a>;
 type ProjectQueryAdapter = SqliteProjectQueries;
 
 struct AppState {
@@ -61,16 +58,13 @@ async fn add_todo(
         .transpose()?;
     state
         .db
-        .transaction(|tx| async move {
-            let repo = TodoRepoAdapter::new(&tx);
+        .transaction(async |uow| {
             match project_id {
                 Some(pid) => {
-                    TaskCommands::new(&repo)
-                        .add_with_project(&title, pid)
-                        .await?;
+                    TaskCommands::new(uow).add_with_project(&title, pid).await?;
                 }
                 None => {
-                    TaskCommands::new(&repo).add(&title).await?;
+                    TaskCommands::new(uow).add(&title).await?;
                 }
             }
             Ok(())
@@ -90,10 +84,7 @@ async fn toggle_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(|tx| async move {
-            let repo = TodoRepoAdapter::new(&tx);
-            TaskCommands::new(&repo).toggle(id).await
-        })
+        .transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -109,10 +100,7 @@ async fn delete_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(|tx| async move {
-            let repo = TodoRepoAdapter::new(&tx);
-            TaskCommands::new(&repo).delete(id).await
-        })
+        .transaction(async |uow| TaskCommands::new(uow).delete(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -133,9 +121,8 @@ async fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String
 async fn add_project(title: String, state: State<'_, AppState>) -> Result<Vec<Project>, String> {
     state
         .db
-        .transaction(|tx| async move {
-            let repo = ProjectRepoAdapter::new(&tx);
-            ProjectCommands::new(&repo).add(&title).await?;
+        .transaction(async |uow| {
+            ProjectCommands::new(uow).add(&title).await?;
             Ok(())
         })
         .await

@@ -1,4 +1,3 @@
-use crate::shared::adapters::database::sqlx_database::SqlxTransaction;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::tasks::Todo;
@@ -6,21 +5,20 @@ use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SqliteTodoRepository<'a> {
-    tx: &'a SqlxTransaction,
+    tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>,
 }
 
 impl<'a> SqliteTodoRepository<'a> {
-    pub fn new(tx: &'a SqlxTransaction) -> Self {
+    pub fn new(tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
         Self { tx }
     }
 }
 
 impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
-    async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
-        let mut tx = self.tx.lock().await;
+    async fn get(&mut self, id: Uuid) -> Result<Option<Todo>, AppErr> {
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
             .bind(id)
-            .fetch_optional(&mut **tx)
+            .fetch_optional(&mut **self.tx)
             .await?;
         Ok(row.map(|row| Todo {
             id: row.get(0),
@@ -30,8 +28,7 @@ impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
         }))
     }
 
-    async fn save(&self, todo: Todo) -> Result<Todo, AppErr> {
-        let mut tx = self.tx.lock().await;
+    async fn save(&mut self, todo: Todo) -> Result<Todo, AppErr> {
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
@@ -41,7 +38,7 @@ impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
             .bind(&todo.title)
             .bind(todo.completed)
             .bind(todo.project_id)
-            .execute(&mut **tx)
+            .execute(&mut **self.tx)
             .await?;
             Ok(Todo { id, ..todo })
         } else {
@@ -52,7 +49,7 @@ impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
             .bind(todo.completed)
             .bind(todo.project_id)
             .bind(todo.id)
-            .execute(&mut **tx)
+            .execute(&mut **self.tx)
             .await?
             .rows_affected();
             if updated == 0 {
@@ -62,11 +59,10 @@ impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
         }
     }
 
-    async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        let mut tx = self.tx.lock().await;
+    async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
-            .execute(&mut **tx)
+            .execute(&mut **self.tx)
             .await?;
         Ok(())
     }

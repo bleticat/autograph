@@ -3,7 +3,8 @@ use std::future::Future;
 use uuid::Uuid;
 
 pub trait Repository<Entity> {
-    fn get(&self, id: Uuid) -> impl Future<Output = Result<Option<Entity>, AppErr>> + Send + '_;
-    fn save(&self, entity: Entity) -> impl Future<Output = Result<Entity, AppErr>> + Send + '_;
-    fn delete(&self, id: Uuid) -> impl Future<Output = Result<(), AppErr>> + Send + '_;
+    fn get(&mut self, id: Uuid)
+    -> impl Future<Output = Result<Option<Entity>, AppErr>> + Send + '_;
+    fn save(&mut self, entity: Entity) -> impl Future<Output = Result<Entity, AppErr>> + Send + '_;
+    fn delete(&mut self, id: Uuid) -> impl Future<Output = Result<(), AppErr>> + Send + '_;
 }

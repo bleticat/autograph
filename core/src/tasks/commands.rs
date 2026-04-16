@@ -1,19 +1,21 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
+use crate::shared::ports::unit_of_work::UnitOfWork;
 use crate::tasks::Todo;
 use uuid::Uuid;
 
-pub struct TaskCommands<'a, R: Repository<Todo>> {
-    tasks: &'a R,
+pub struct TaskCommands<'a, U: UnitOfWork> {
+    uow: &'a mut U,
 }
 
-impl<'a, R: Repository<Todo>> TaskCommands<'a, R> {
-    pub fn new(tasks: &'a R) -> Self {
-        Self { tasks }
+impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
+    pub fn new(uow: &'a mut U) -> Self {
+        Self { uow }
     }
 
-    pub async fn add(&self, title: &str) -> Result<Todo, AppErr> {
-        self.tasks
+    pub async fn add(&mut self, title: &str) -> Result<Todo, AppErr> {
+        self.uow
+            .tasks()
             .save(Todo {
                 id: Uuid::nil(),
                 title: title.to_owned(),
@@ -23,8 +25,9 @@ impl<'a, R: Repository<Todo>> TaskCommands<'a, R> {
             .await
     }
 
-    pub async fn add_with_project(&self, title: &str, project_id: Uuid) -> Result<Todo, AppErr> {
-        self.tasks
+    pub async fn add_with_project(&mut self, title: &str, project_id: Uuid) -> Result<Todo, AppErr> {
+        self.uow
+            .tasks()
             .save(Todo {
                 id: Uuid::nil(),
                 title: title.to_owned(),
@@ -34,15 +37,16 @@ impl<'a, R: Repository<Todo>> TaskCommands<'a, R> {
             .await
     }
 
-    pub async fn toggle(&self, id: Uuid) -> Result<(), AppErr> {
-        if let Some(mut todo) = self.tasks.get(id).await? {
+    pub async fn toggle(&mut self, id: Uuid) -> Result<(), AppErr> {
+        let todo = self.uow.tasks().get(id).await?;
+        if let Some(mut todo) = todo {
             todo.completed = !todo.completed;
-            self.tasks.save(todo).await?;
+            self.uow.tasks().save(todo).await?;
         }
         Ok(())
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        self.tasks.delete(id).await
+    pub async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
+        self.uow.tasks().delete(id).await
     }
 }
