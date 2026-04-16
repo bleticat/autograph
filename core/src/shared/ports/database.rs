@@ -1,15 +1,11 @@
 use crate::shared::error::AppErr;
 use std::future::Future;
 
-pub trait Connection {}
-
-pub trait Transaction {}
-
 pub trait Database {
-    type Conn<'a>: Connection
+    type Conn<'a>
     where
         Self: 'a;
-    type Tx<'a>: Transaction
+    type Tx<'a>
     where
         Self: 'a;
 

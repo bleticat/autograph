@@ -3,11 +3,11 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use uuid::Uuid;
 
-pub struct ProjectCommands<'a, R: Repository<Project>> {
+pub struct ProjectCommands<'a, R: Repository<'a, Project>> {
     projects: &'a R,
 }
 
-impl<'a, R: Repository<Project>> ProjectCommands<'a, R> {
+impl<'a, R: Repository<'a, Project>> ProjectCommands<'a, R> {
     pub fn new(projects: &'a R) -> Self {
         Self { projects }
     }

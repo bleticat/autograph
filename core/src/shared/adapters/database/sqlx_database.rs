@@ -1,5 +1,5 @@
 use crate::shared::error::AppErr;
-use crate::shared::ports::database::{Connection, Database, Transaction};
+use crate::shared::ports::database::Database;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::str::FromStr;
 use tokio::sync::Mutex;
@@ -12,8 +12,6 @@ impl SqlxConnection {
         self.0.clone()
     }
 }
-
-impl Connection for SqlxConnection {}
 
 pub struct SqlxTransaction(Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>);
 
@@ -38,8 +36,6 @@ impl SqlxTransaction {
         Ok(())
     }
 }
-
-impl Transaction for SqlxTransaction {}
 
 pub struct SqlxDatabase {
     pool: sqlx::SqlitePool,

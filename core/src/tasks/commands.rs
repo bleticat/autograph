@@ -3,11 +3,11 @@ use crate::shared::ports::repository::Repository;
 use crate::tasks::Todo;
 use uuid::Uuid;
 
-pub struct TaskCommands<'a, R: Repository<Todo>> {
+pub struct TaskCommands<'a, R: Repository<'a, Todo>> {
     tasks: &'a R,
 }
 
-impl<'a, R: Repository<Todo>> TaskCommands<'a, R> {
+impl<'a, R: Repository<'a, Todo>> TaskCommands<'a, R> {
     pub fn new(tasks: &'a R) -> Self {
         Self { tasks }
     }

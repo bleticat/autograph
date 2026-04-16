@@ -9,13 +9,13 @@ pub struct SqliteTodoRepository<'a> {
     conn: &'a SqlxTransaction,
 }
 
-impl<'a> SqliteTodoRepository<'a> {
-    pub fn new(tx: &'a SqlxTransaction) -> Self {
+impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
+    type Tx = SqlxTransaction;
+
+    fn bind(tx: &'a Self::Tx) -> Self {
         Self { conn: tx }
     }
-}
 
-impl Repository<Todo> for SqliteTodoRepository<'_> {
     async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
         let mut tx = self.conn.acquire().await;
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")

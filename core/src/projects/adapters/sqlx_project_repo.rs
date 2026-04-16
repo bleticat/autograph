@@ -9,13 +9,13 @@ pub struct SqliteProjectRepository<'a> {
     conn: &'a SqlxTransaction,
 }
 
-impl<'a> SqliteProjectRepository<'a> {
-    pub fn new(tx: &'a SqlxTransaction) -> Self {
+impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
+    type Tx = SqlxTransaction;
+
+    fn bind(tx: &'a Self::Tx) -> Self {
         Self { conn: tx }
     }
-}
 
-impl Repository<Project> for SqliteProjectRepository<'_> {
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
         let mut tx = self.conn.acquire().await;
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
