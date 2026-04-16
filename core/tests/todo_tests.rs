@@ -1,6 +1,6 @@
 use autograph_core::{
     Database, SqliteTaskQueries, SqlxDatabase,
-    TaskCommands, TaskQueries,
+    TaskCommands, TaskQueries, UnitOfWork,
 };
 use uuid::Uuid;
 
@@ -24,7 +24,7 @@ async fn empty_database_returns_no_todos() {
 #[tokio::test]
 async fn add_single_todo() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("buy milk").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("buy milk").await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -39,7 +39,7 @@ async fn add_single_todo() {
 async fn add_multiple_todos_preserves_order() {
     let db = fresh_db().await;
     for title in ["first", "second", "third"] {
-        db.transaction(async |uow| TaskCommands::new(uow).add(title).await)
+        db.transaction(async |uow| TaskCommands::new(uow.tasks()).add(title).await)
             .await
             .unwrap();
     }
@@ -55,7 +55,7 @@ async fn add_multiple_todos_preserves_order() {
 #[tokio::test]
 async fn toggle_marks_completed() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("task").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("task").await)
         .await
         .unwrap();
     let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -63,7 +63,7 @@ async fn toggle_marks_completed() {
         .unwrap()[0]
         .id;
 
-    db.transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(id).await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -75,7 +75,7 @@ async fn toggle_marks_completed() {
 #[tokio::test]
 async fn toggle_twice_restores_incomplete() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("task").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("task").await)
         .await
         .unwrap();
     let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -83,10 +83,10 @@ async fn toggle_twice_restores_incomplete() {
         .unwrap()[0]
         .id;
 
-    db.transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(id).await)
         .await
         .unwrap();
-    db.transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(id).await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -98,7 +98,7 @@ async fn toggle_twice_restores_incomplete() {
 #[tokio::test]
 async fn delete_removes_todo() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("to delete").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("to delete").await)
         .await
         .unwrap();
     let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -106,7 +106,7 @@ async fn delete_removes_todo() {
         .unwrap()[0]
         .id;
 
-    db.transaction(async |uow| TaskCommands::new(uow).delete(id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).delete(id).await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -118,10 +118,10 @@ async fn delete_removes_todo() {
 #[tokio::test]
 async fn delete_only_target_todo() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("keep").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("keep").await)
         .await
         .unwrap();
-    db.transaction(async |uow| TaskCommands::new(uow).add("remove").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("remove").await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -129,7 +129,7 @@ async fn delete_only_target_todo() {
         .unwrap();
     let remove_id = todos[1].id;
 
-    db.transaction(async |uow| TaskCommands::new(uow).delete(remove_id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).delete(remove_id).await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -142,7 +142,7 @@ async fn delete_only_target_todo() {
 #[tokio::test]
 async fn toggle_nonexistent_id_is_noop() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).toggle(Uuid::new_v4()).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(Uuid::new_v4()).await)
         .await
         .unwrap();
     assert!((SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -154,10 +154,10 @@ async fn toggle_nonexistent_id_is_noop() {
 #[tokio::test]
 async fn delete_nonexistent_id_is_noop() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("still here").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("still here").await)
         .await
         .unwrap();
-    db.transaction(async |uow| TaskCommands::new(uow).delete(Uuid::new_v4()).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).delete(Uuid::new_v4()).await)
         .await
         .unwrap();
     assert_eq!(
@@ -172,18 +172,18 @@ async fn delete_nonexistent_id_is_noop() {
 #[tokio::test]
 async fn ids_are_unique_after_delete() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("first").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("first").await)
         .await
         .unwrap();
     let first_id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
-    db.transaction(async |uow| TaskCommands::new(uow).delete(first_id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).delete(first_id).await)
         .await
         .unwrap();
 
-    db.transaction(async |uow| TaskCommands::new(uow).add("second").await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).add("second").await)
         .await
         .unwrap();
     let second_id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
@@ -199,7 +199,7 @@ async fn full_workflow() {
 
     // Add a few todos
     for title in ["buy groceries", "write tests", "deploy app"] {
-        db.transaction(async |uow| TaskCommands::new(uow).add(title).await)
+        db.transaction(async |uow| TaskCommands::new(uow.tasks()).add(title).await)
             .await
             .unwrap();
     }
@@ -210,12 +210,12 @@ async fn full_workflow() {
         .unwrap();
     let middle_todo_id = todos[1].id;
     let last_todo_id = todos[2].id;
-    db.transaction(async |uow| TaskCommands::new(uow).toggle(middle_todo_id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(middle_todo_id).await)
         .await
         .unwrap();
 
     // Delete one
-    db.transaction(async |uow| TaskCommands::new(uow).delete(last_todo_id).await)
+    db.transaction(async |uow| TaskCommands::new(uow.tasks()).delete(last_todo_id).await)
         .await
         .unwrap();
 
