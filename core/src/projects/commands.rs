@@ -3,18 +3,18 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use uuid::Uuid;
 
-pub struct ProjectCommands<'a, R: Repository<'a, Project>> {
+pub struct ProjectCommands<'a, R: Repository<Project>> {
     projects: &'a R,
 }
 
-impl<'a, R: Repository<'a, Project>> ProjectCommands<'a, R> {
+impl<'a, R: Repository<Project>> ProjectCommands<'a, R> {
     pub fn new(projects: &'a R) -> Self {
         Self { projects }
     }
 
-    pub async fn add(&self, title: &str) -> Result<Uuid, AppErr> {
+    pub async fn add(&self, title: &str) -> Result<Project, AppErr> {
         self.projects
-            .save(&Project {
+            .save(Project {
                 id: Uuid::nil(),
                 title: title.to_owned(),
             })

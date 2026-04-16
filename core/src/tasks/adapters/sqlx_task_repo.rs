@@ -9,13 +9,13 @@ pub struct SqliteTodoRepository<'a> {
     tx: &'a SqlxTx,
 }
 
-impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
-    type Tx = SqlxTx;
-
-    fn bind(tx: &'a Self::Tx) -> Self {
+impl<'a> SqliteTodoRepository<'a> {
+    pub fn new(tx: &'a SqlxTx) -> Self {
         Self { tx }
     }
+}
 
+impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
     async fn get(&self, id: Uuid) -> Result<Option<Todo>, AppErr> {
         let mut tx = self.tx.lock().await;
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
@@ -30,7 +30,7 @@ impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
         }))
     }
 
-    async fn save(&self, todo: &Todo) -> Result<Uuid, AppErr> {
+    async fn save(&self, todo: Todo) -> Result<Todo, AppErr> {
         let mut tx = self.tx.lock().await;
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
@@ -43,7 +43,7 @@ impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
             .bind(todo.project_id)
             .execute(&mut **tx)
             .await?;
-            Ok(id)
+            Ok(Todo { id, ..todo })
         } else {
             let updated = sqlx::query(
                 "UPDATE todos SET title = ?1, completed = ?2, project_id = ?3 WHERE id = ?4",
@@ -58,7 +58,7 @@ impl<'a> Repository<'a, Todo> for SqliteTodoRepository<'a> {
             if updated == 0 {
                 return Err(sqlx::Error::RowNotFound.into());
             }
-            Ok(todo.id)
+            Ok(todo)
         }
     }
 

@@ -1,6 +1,5 @@
 use crate::shared::adapters::database::sqlx_database::SqlxConn;
 use crate::shared::error::AppErr;
-use crate::shared::ports::queries::Queries;
 use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
 use sqlx::Row;
@@ -10,10 +9,8 @@ pub struct SqliteTaskQueries {
     conn: SqlxConn,
 }
 
-impl Queries for SqliteTaskQueries {
-    type Conn = SqlxConn;
-
-    fn bind(conn: SqlxConn) -> Self {
+impl SqliteTaskQueries {
+    pub fn new(conn: SqlxConn) -> Self {
         Self { conn }
     }
 }

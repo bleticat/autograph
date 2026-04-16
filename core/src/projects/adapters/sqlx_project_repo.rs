@@ -9,13 +9,13 @@ pub struct SqliteProjectRepository<'a> {
     tx: &'a SqlxTx,
 }
 
-impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
-    type Tx = SqlxTx;
-
-    fn bind(tx: &'a Self::Tx) -> Self {
+impl<'a> SqliteProjectRepository<'a> {
+    pub fn new(tx: &'a SqlxTx) -> Self {
         Self { tx }
     }
+}
 
+impl<'a> Repository<Project> for SqliteProjectRepository<'a> {
     async fn get(&self, id: Uuid) -> Result<Option<Project>, AppErr> {
         let mut tx = self.tx.lock().await;
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
@@ -28,7 +28,7 @@ impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
         }))
     }
 
-    async fn save(&self, project: &Project) -> Result<Uuid, AppErr> {
+    async fn save(&self, project: Project) -> Result<Project, AppErr> {
         let mut tx = self.tx.lock().await;
         if project.id.is_nil() {
             let id = Uuid::new_v4();
@@ -37,14 +37,14 @@ impl<'a> Repository<'a, Project> for SqliteProjectRepository<'a> {
                 .bind(project.title.as_str())
                 .execute(&mut **tx)
                 .await?;
-            Ok(id)
+            Ok(Project { id, ..project })
         } else {
             sqlx::query("UPDATE projects SET title = ?1 WHERE id = ?2")
                 .bind(project.title.as_str())
                 .bind(project.id)
                 .execute(&mut **tx)
                 .await?;
-            Ok(project.id)
+            Ok(project)
         }
     }
 

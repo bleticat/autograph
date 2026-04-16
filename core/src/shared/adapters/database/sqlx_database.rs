@@ -8,7 +8,7 @@ pub type SqlxConn = sqlx::SqlitePool;
 pub type SqlxTx = Mutex<sqlx::Transaction<'static, sqlx::Sqlite>>;
 
 pub struct SqlxDatabase {
-    pool: sqlx::SqlitePool,
+    pool: SqlxConn,
 }
 
 impl SqlxDatabase {
