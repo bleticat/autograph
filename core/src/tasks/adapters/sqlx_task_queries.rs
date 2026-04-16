@@ -1,5 +1,6 @@
 use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
+use crate::shared::ports::queries::Queries;
 use crate::tasks::ports::task_queries::TaskQueries;
 use crate::tasks::Todo;
 use sqlx::Row;
@@ -9,15 +10,15 @@ pub struct SqliteTaskQueries {
     conn: SqlxConnection,
 }
 
-impl From<SqlxConnection> for SqliteTaskQueries {
-    fn from(conn: SqlxConnection) -> Self {
+impl Queries for SqliteTaskQueries {
+    type Conn = SqlxConnection;
+
+    fn bind(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
 impl TaskQueries for SqliteTaskQueries {
-    type Conn = SqlxConnection;
-
     async fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
         let conn = self.conn.raw();
         let rows = sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")

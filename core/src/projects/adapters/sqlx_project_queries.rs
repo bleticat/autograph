@@ -2,21 +2,22 @@ use crate::projects::ports::project_queries::ProjectQueries;
 use crate::projects::Project;
 use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
+use crate::shared::ports::queries::Queries;
 use sqlx::Row;
 
 pub struct SqliteProjectQueries {
     conn: SqlxConnection,
 }
 
-impl From<SqlxConnection> for SqliteProjectQueries {
-    fn from(conn: SqlxConnection) -> Self {
+impl Queries for SqliteProjectQueries {
+    type Conn = SqlxConnection;
+
+    fn bind(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
 impl ProjectQueries for SqliteProjectQueries {
-    type Conn = SqlxConnection;
-
     async fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
         let conn = self.conn.raw();
         let rows = sqlx::query("SELECT id, title FROM projects ORDER BY rowid")
