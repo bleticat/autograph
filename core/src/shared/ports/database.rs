@@ -10,7 +10,7 @@ pub trait Database: Sync {
     where
         Self: Sized;
     fn conn(&self) -> Self::Conn;
-    fn transaction<'a, T: Send + 'a>(
+    fn begin<'a, T: Send + 'a>(
         &'a self,
         f: impl AsyncFnOnce(&mut Self::Uow) -> Result<T, AppErr> + Send + 'a,
     ) -> impl Future<Output = Result<T, AppErr>> + 'a;

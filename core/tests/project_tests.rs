@@ -23,7 +23,7 @@ async fn empty_database_returns_no_projects() {
 #[tokio::test]
 async fn add_single_project() {
     let db = fresh_db().await;
-    db.transaction(async |uow| {
+    db.begin(async |uow| {
         ProjectCommands::new(uow).add("My Project").await?;
         Ok(())
     })
@@ -40,7 +40,7 @@ async fn add_single_project() {
 async fn add_multiple_projects_preserves_order() {
     let db = fresh_db().await;
     for title in ["Alpha", "Beta", "Gamma"] {
-        db.transaction(async |uow| {
+        db.begin(async |uow| {
             ProjectCommands::new(uow).add(title).await?;
             Ok(())
         })
@@ -59,7 +59,7 @@ async fn add_multiple_projects_preserves_order() {
 #[tokio::test]
 async fn todos_without_project_by_default() {
     let db = fresh_db().await;
-    db.transaction(async |uow| TaskCommands::new(uow).add("inbox task").await)
+    db.begin(async |uow| TaskCommands::new(uow).add("inbox task").await)
         .await
         .unwrap();
     let todos = (SqliteTaskQueries::new(db.conn()).get_todos_without_project())
@@ -74,12 +74,12 @@ async fn todos_without_project_by_default() {
 async fn add_todo_with_project() {
     let db = fresh_db().await;
     let project = db
-        .transaction(async |uow| ProjectCommands::new(uow).add("Work").await)
+        .begin(async |uow| ProjectCommands::new(uow).add("Work").await)
         .await
         .unwrap();
     let project_id = project.id;
 
-    db.transaction(async |uow| {
+    db.begin(async |uow| {
         TaskCommands::new(uow)
             .add_with_project("write report", project_id)
             .await
@@ -104,31 +104,31 @@ async fn add_todo_with_project() {
 async fn tasks_are_filtered_by_project() {
     let db = fresh_db().await;
     let p1 = db
-        .transaction(async |uow| ProjectCommands::new(uow).add("Project A").await)
+        .begin(async |uow| ProjectCommands::new(uow).add("Project A").await)
         .await
         .unwrap()
         .id;
     let p2 = db
-        .transaction(async |uow| ProjectCommands::new(uow).add("Project B").await)
+        .begin(async |uow| ProjectCommands::new(uow).add("Project B").await)
         .await
         .unwrap()
         .id;
 
-    db.transaction(async |uow| {
+    db.begin(async |uow| {
         TaskCommands::new(uow)
             .add_with_project("task for A", p1)
             .await
     })
     .await
     .unwrap();
-    db.transaction(async |uow| {
+    db.begin(async |uow| {
         TaskCommands::new(uow)
             .add_with_project("task for B", p2)
             .await
     })
     .await
     .unwrap();
-    db.transaction(async |uow| TaskCommands::new(uow).add("no project task").await)
+    db.begin(async |uow| TaskCommands::new(uow).add("no project task").await)
         .await
         .unwrap();
 

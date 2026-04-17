@@ -58,7 +58,7 @@ async fn add_todo(
         .transpose()?;
     state
         .db
-        .transaction(async |uow| {
+        .begin(async |uow| {
             match project_id {
                 Some(pid) => {
                     TaskCommands::new(uow).add_with_project(&title, pid).await?;
@@ -84,7 +84,7 @@ async fn toggle_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
+        .begin(async |uow| TaskCommands::new(uow).toggle(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -100,7 +100,7 @@ async fn delete_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow).delete(id).await)
+        .begin(async |uow| TaskCommands::new(uow).delete(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -121,7 +121,7 @@ async fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String
 async fn add_project(title: String, state: State<'_, AppState>) -> Result<Vec<Project>, String> {
     state
         .db
-        .transaction(async |uow| {
+        .begin(async |uow| {
             ProjectCommands::new(uow).add(&title).await?;
             Ok(())
         })
