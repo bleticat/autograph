@@ -1,47 +1,63 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteTaskQueries,
-    SqlxDatabase, TaskCommands, TaskQueries, Todo,
+    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries,
+    SqliteTaskQueries, SqlxDatabase, TaskCommands, TaskQueries, Todo,
 };
+use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 
 type DatabaseAdapter = SqlxDatabase;
 type TaskQueryAdapter = SqliteTaskQueries;
 type ProjectQueryAdapter = SqliteProjectQueries;
+type TauriResult<T> = Result<T, TauriErr>;
+
+#[derive(Clone, Debug, Serialize)]
+struct TauriErr(String);
+
+impl From<AppErr> for TauriErr {
+    fn from(err: AppErr) -> Self {
+        Self(err.to_string())
+    }
+}
+
+fn parse_uuid(value: &str, field: &str) -> TauriResult<uuid::Uuid> {
+    value
+        .parse()
+        .map_err(|err: uuid::Error| TauriErr(format!("Invalid UUID for {field}: {err}")))
+}
+
+fn parse_optional_uuid(value: Option<String>, field: &str) -> TauriResult<Option<uuid::Uuid>> {
+    value.as_deref().map(|id| parse_uuid(id, field)).transpose()
+}
 
 struct AppState {
     db: DatabaseAdapter,
 }
 
 #[tauri::command]
-async fn get_todos(state: State<'_, AppState>) -> Result<Vec<Todo>, String> {
-    TaskQueryAdapter::new(state.db.conn())
+async fn get_todos(state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_all_todos()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
-async fn get_todos_without_project(state: State<'_, AppState>) -> Result<Vec<Todo>, String> {
-    TaskQueryAdapter::new(state.db.conn())
+async fn get_todos_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_todos_without_project()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
 async fn get_todos_by_project(
     project_id: String,
     state: State<'_, AppState>,
-) -> Result<Vec<Todo>, String> {
-    let project_id = project_id
-        .parse()
-        .map_err(|e| format!("Invalid UUID for project_id: {e}"))?;
-    TaskQueryAdapter::new(state.db.conn())
+) -> TauriResult<Vec<Todo>> {
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_todos_by_project(project_id)
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
@@ -49,16 +65,11 @@ async fn add_todo(
     title: String,
     project_id: Option<String>,
     state: State<'_, AppState>,
-) -> Result<Vec<Todo>, String> {
-    let project_id = project_id
-        .map(|id| {
-            id.parse()
-                .map_err(|e| format!("Invalid UUID for project_id: {e}"))
-        })
-        .transpose()?;
+) -> TauriResult<Vec<Todo>> {
+    let project_id = parse_optional_uuid(project_id, "project_id")?;
     state
         .db
-        .transaction(async |uow| {
+        .begin(async |uow| {
             match project_id {
                 Some(pid) => {
                     TaskCommands::new(uow).add_with_project(&title, pid).await?;
@@ -69,68 +80,55 @@ async fn add_todo(
             }
             Ok(())
         })
-        .await
-        .map_err(|e| e.to_string())?;
-    TaskQueryAdapter::new(state.db.conn())
+        .await?;
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_all_todos()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
-async fn toggle_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>, String> {
-    let id = id
-        .parse()
-        .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
+async fn toggle_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
+    let id = parse_uuid(&id, "todo id")?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
-        .await
-        .map_err(|e| e.to_string())?;
-    TaskQueryAdapter::new(state.db.conn())
+        .begin(async |uow| TaskCommands::new(uow).toggle(id).await)
+        .await?;
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_all_todos()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
-async fn delete_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>, String> {
-    let id = id
-        .parse()
-        .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
+async fn delete_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
+    let id = parse_uuid(&id, "todo id")?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow).delete(id).await)
-        .await
-        .map_err(|e| e.to_string())?;
-    TaskQueryAdapter::new(state.db.conn())
+        .begin(async |uow| TaskCommands::new(uow).delete(id).await)
+        .await?;
+    Ok(TaskQueryAdapter::new(state.db.conn())
         .get_all_todos()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
-async fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
-    ProjectQueryAdapter::new(state.db.conn())
+async fn get_projects(state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
+    Ok(ProjectQueryAdapter::new(state.db.conn())
         .get_all_projects()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
-async fn add_project(title: String, state: State<'_, AppState>) -> Result<Vec<Project>, String> {
+async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
     state
         .db
-        .transaction(async |uow| {
+        .begin(async |uow| {
             ProjectCommands::new(uow).add(&title).await?;
             Ok(())
         })
-        .await
-        .map_err(|e| e.to_string())?;
-    ProjectQueryAdapter::new(state.db.conn())
+        .await?;
+    Ok(ProjectQueryAdapter::new(state.db.conn())
         .get_all_projects()
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 fn main() {

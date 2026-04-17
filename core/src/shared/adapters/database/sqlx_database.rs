@@ -1,34 +1,11 @@
-use crate::projects::adapters::sqlx_project_repo::SqliteProjectRepository;
+use super::sqlx_unit_of_work::SqlxUnitOfWork;
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use crate::shared::ports::unit_of_work::UnitOfWork;
-use crate::tasks::adapters::sqlx_task_repo::SqliteTodoRepository;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::str::FromStr;
 
 pub type SqlxConnection = sqlx::SqlitePool;
-
-pub struct SqlxUnitOfWork {
-    tx: sqlx::Transaction<'static, sqlx::Sqlite>,
-}
-
-impl UnitOfWork for SqlxUnitOfWork {
-    type ProjectRepo<'a> = SqliteProjectRepository<'a> where Self: 'a;
-    type TaskRepo<'a> = SqliteTodoRepository<'a> where Self: 'a;
-
-    fn projects(&mut self) -> SqliteProjectRepository<'_> {
-        SqliteProjectRepository::new(&mut self.tx)
-    }
-
-    fn tasks(&mut self) -> SqliteTodoRepository<'_> {
-        SqliteTodoRepository::new(&mut self.tx)
-    }
-
-    async fn commit(self) -> Result<(), AppErr> {
-        self.tx.commit().await?;
-        Ok(())
-    }
-}
 
 pub struct SqlxDatabase {
     pool: SqlxConnection,
@@ -77,11 +54,11 @@ impl Database for SqlxDatabase {
         self.pool.clone()
     }
 
-    async fn transaction<'a, T: Send + 'a>(
+    async fn begin<'a, T: Send + 'a>(
         &'a self,
         f: impl AsyncFnOnce(&mut SqlxUnitOfWork) -> Result<T, AppErr> + Send + 'a,
     ) -> Result<T, AppErr> {
-        let mut uow = self.pool.begin().await.map(|tx| SqlxUnitOfWork { tx })?;
+        let mut uow = self.pool.begin().await.map(SqlxUnitOfWork::new)?;
         let val = f(&mut uow).await?;
         uow.commit().await?;
         Ok(val)
