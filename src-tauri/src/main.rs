@@ -2,7 +2,7 @@
 
 use autograph_core::{
     Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteTaskQueries,
-    SqlxDatabase, TaskCommands, TaskQueries, Todo, UnitOfWork,
+    SqlxDatabase, TaskCommands, TaskQueries, Todo,
 };
 use tauri::{State, async_runtime::block_on};
 
@@ -61,10 +61,10 @@ async fn add_todo(
         .transaction(async |uow| {
             match project_id {
                 Some(pid) => {
-                    TaskCommands::new(uow.tasks()).add_with_project(&title, pid).await?;
+                    TaskCommands::new(uow).add_with_project(&title, pid).await?;
                 }
                 None => {
-                    TaskCommands::new(uow.tasks()).add(&title).await?;
+                    TaskCommands::new(uow).add(&title).await?;
                 }
             }
             Ok(())
@@ -84,7 +84,7 @@ async fn toggle_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow.tasks()).toggle(id).await)
+        .transaction(async |uow| TaskCommands::new(uow).toggle(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -100,7 +100,7 @@ async fn delete_todo(id: String, state: State<'_, AppState>) -> Result<Vec<Todo>
         .map_err(|e| format!("Invalid UUID for todo id: {e}"))?;
     state
         .db
-        .transaction(async |uow| TaskCommands::new(uow.tasks()).delete(id).await)
+        .transaction(async |uow| TaskCommands::new(uow).delete(id).await)
         .await
         .map_err(|e| e.to_string())?;
     TaskQueryAdapter::new(state.db.conn())
@@ -122,7 +122,7 @@ async fn add_project(title: String, state: State<'_, AppState>) -> Result<Vec<Pr
     state
         .db
         .transaction(async |uow| {
-            ProjectCommands::new(uow.projects()).add(&title).await?;
+            ProjectCommands::new(uow).add(&title).await?;
             Ok(())
         })
         .await
