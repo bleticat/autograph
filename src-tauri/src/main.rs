@@ -12,7 +12,7 @@ type TaskQueryAdapter = SqliteTaskQueries;
 type ProjectQueryAdapter = SqliteProjectQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct TauriErr(String);
 
 impl From<AppErr> for TauriErr {
@@ -21,10 +21,14 @@ impl From<AppErr> for TauriErr {
     }
 }
 
-impl From<uuid::Error> for TauriErr {
-    fn from(err: uuid::Error) -> Self {
-        Self(format!("Invalid UUID: {err}"))
-    }
+fn parse_uuid(value: &str, field: &str) -> TauriResult<uuid::Uuid> {
+    value
+        .parse()
+        .map_err(|err: uuid::Error| TauriErr(format!("Invalid UUID for {field}: {err}")))
+}
+
+fn parse_optional_uuid(value: Option<String>, field: &str) -> TauriResult<Option<uuid::Uuid>> {
+    value.as_deref().map(|id| parse_uuid(id, field)).transpose()
 }
 
 struct AppState {
@@ -50,7 +54,7 @@ async fn get_todos_by_project(
     project_id: String,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Todo>> {
-    let project_id = project_id.parse()?;
+    let project_id = parse_uuid(&project_id, "project_id")?;
     Ok(TaskQueryAdapter::new(state.db.conn())
         .get_todos_by_project(project_id)
         .await?)
@@ -62,7 +66,7 @@ async fn add_todo(
     project_id: Option<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Todo>> {
-    let project_id = project_id.map(|id| id.parse()).transpose()?;
+    let project_id = parse_optional_uuid(project_id, "project_id")?;
     state
         .db
         .begin(async |uow| {
@@ -84,7 +88,7 @@ async fn add_todo(
 
 #[tauri::command]
 async fn toggle_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    let id = id.parse()?;
+    let id = parse_uuid(&id, "todo id")?;
     state
         .db
         .begin(async |uow| TaskCommands::new(uow).toggle(id).await)
@@ -96,7 +100,7 @@ async fn toggle_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<
 
 #[tauri::command]
 async fn delete_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    let id = id.parse()?;
+    let id = parse_uuid(&id, "todo id")?;
     state
         .db
         .begin(async |uow| TaskCommands::new(uow).delete(id).await)
