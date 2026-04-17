@@ -58,7 +58,7 @@ impl Database for SqlxDatabase {
         &'a self,
         f: impl AsyncFnOnce(&mut SqlxUnitOfWork) -> Result<T, AppErr> + Send + 'a,
     ) -> Result<T, AppErr> {
-        let mut uow = self.pool.begin().await.map(|tx| SqlxUnitOfWork { tx })?;
+        let mut uow = self.pool.begin().await.map(SqlxUnitOfWork::new)?;
         let val = f(&mut uow).await?;
         uow.commit().await?;
         Ok(val)

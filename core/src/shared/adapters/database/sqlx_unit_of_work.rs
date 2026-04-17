@@ -4,7 +4,13 @@ use crate::shared::ports::unit_of_work::UnitOfWork;
 use crate::tasks::adapters::sqlx_task_repo::SqliteTodoRepository;
 
 pub struct SqlxUnitOfWork {
-    pub(super) tx: sqlx::Transaction<'static, sqlx::Sqlite>,
+    tx: sqlx::Transaction<'static, sqlx::Sqlite>,
+}
+
+impl SqlxUnitOfWork {
+    pub(super) fn new(tx: sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
+        Self { tx }
+    }
 }
 
 impl UnitOfWork for SqlxUnitOfWork {
