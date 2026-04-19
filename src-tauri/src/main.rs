@@ -111,6 +111,28 @@ async fn delete_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<
 }
 
 #[tauri::command]
+async fn update_todo(
+    id: String,
+    title: String,
+    description: String,
+    deadline: Option<String>,
+    state: State<'_, AppState>,
+) -> TauriResult<Vec<Todo>> {
+    let id = parse_uuid(&id, "todo id")?;
+    state
+        .db
+        .begin(async |uow| {
+            TaskCommands::new(uow)
+                .edit(id, &title, &description, deadline)
+                .await
+        })
+        .await?;
+    Ok(TaskQueryAdapter::new(state.db.conn())
+        .get_all_todos()
+        .await?)
+}
+
+#[tauri::command]
 async fn get_projects(state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
     Ok(ProjectQueryAdapter::new(state.db.conn())
         .get_all_projects()
@@ -145,6 +167,7 @@ fn main() {
             add_todo,
             toggle_todo,
             delete_todo,
+            update_todo,
             get_projects,
             add_project,
         ])

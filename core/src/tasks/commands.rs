@@ -19,6 +19,8 @@ impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
             .save(Todo {
                 id: Uuid::nil(),
                 title: title.to_owned(),
+                description: String::new(),
+                deadline: None,
                 completed: false,
                 project_id: None,
             })
@@ -35,10 +37,29 @@ impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
             .save(Todo {
                 id: Uuid::nil(),
                 title: title.to_owned(),
+                description: String::new(),
+                deadline: None,
                 completed: false,
                 project_id: Some(project_id),
             })
             .await
+    }
+
+    pub async fn edit(
+        &mut self,
+        id: Uuid,
+        title: &str,
+        description: &str,
+        deadline: Option<String>,
+    ) -> Result<(), AppErr> {
+        let todo = self.uow.tasks().get(id).await?;
+        if let Some(mut todo) = todo {
+            todo.title = title.to_owned();
+            todo.description = description.to_owned();
+            todo.deadline = deadline;
+            self.uow.tasks().save(todo).await?;
+        }
+        Ok(())
     }
 
     pub async fn toggle(&mut self, id: Uuid) -> Result<(), AppErr> {

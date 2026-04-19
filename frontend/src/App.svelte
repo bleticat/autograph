@@ -6,6 +6,11 @@
   let selectedProjectId = $state(null); // null = "No Project" view
   let todoInput = $state("");
   let projectInput = $state("");
+  let editingTodoId = $state(null);
+  let editTitle = $state("");
+  let editDescription = $state("");
+  let editDeadline = $state("");
+  const editingTodo = $derived(todos.find((todo) => todo.id === editingTodoId) ?? null);
 
   async function loadProjects() {
     projects = await invoke("get_projects");
@@ -40,6 +45,33 @@
     await loadTodos();
   }
 
+  function openTodoEditor(todo) {
+    editingTodoId = todo.id;
+    editTitle = todo.title;
+    editDescription = todo.description ?? "";
+    editDeadline = todo.deadline ?? "";
+  }
+
+  function closeTodoEditor() {
+    editingTodoId = null;
+    editTitle = "";
+    editDescription = "";
+    editDeadline = "";
+  }
+
+  async function saveTodoEdits() {
+    const title = editTitle.trim();
+    if (!editingTodoId || !title) return;
+    await invoke("update_todo", {
+      id: editingTodoId,
+      title,
+      description: editDescription.trim(),
+      deadline: editDeadline || null,
+    });
+    await loadTodos();
+    closeTodoEditor();
+  }
+
   async function addProject() {
     const title = projectInput.trim();
     if (!title) return;
@@ -49,6 +81,7 @@
 
   function selectProject(id) {
     selectedProjectId = id;
+    closeTodoEditor();
   }
 
   function handleTodoKeydown(e) {
@@ -65,6 +98,12 @@
 
   $effect(() => {
     loadTodos();
+  });
+
+  $effect(() => {
+    if (editingTodoId !== null && !todos.some((todo) => todo.id === editingTodoId)) {
+      closeTodoEditor();
+    }
   });
 </script>
 
@@ -104,27 +143,50 @@
         ? "Inbox"
         : projects.find((p) => p.id === selectedProjectId)?.title ?? "Inbox"}
     </h1>
-    <div class="input-row">
-      <input
-        type="text"
-        placeholder="What needs to be done?"
-        bind:value={todoInput}
-        onkeydown={handleTodoKeydown}
-      />
-      <button onclick={addTodo}>Add</button>
-    </div>
-    <ul class="todo-list">
-      {#each todos as todo (todo.id)}
-        <li class:completed={todo.completed}>
-          <input
-            type="checkbox"
-            checked={todo.completed}
-            onchange={() => toggleTodo(todo.id)}
-          />
-          <span>{todo.title}</span>
-          <button class="delete" onclick={() => deleteTodo(todo.id)}>&times;</button>
-        </li>
-      {/each}
-    </ul>
+    {#if editingTodo}
+      <section class="edit-page">
+        <h2>Edit task</h2>
+        <label>
+          Title
+          <input type="text" bind:value={editTitle} />
+        </label>
+        <label>
+          Description
+          <textarea rows="4" bind:value={editDescription}></textarea>
+        </label>
+        <label>
+          Deadline
+          <input type="date" bind:value={editDeadline} />
+        </label>
+        <div class="edit-actions">
+          <button onclick={saveTodoEdits}>Save</button>
+          <button class="secondary" onclick={closeTodoEditor}>Back</button>
+        </div>
+      </section>
+    {:else}
+      <div class="input-row">
+        <input
+          type="text"
+          placeholder="What needs to be done?"
+          bind:value={todoInput}
+          onkeydown={handleTodoKeydown}
+        />
+        <button onclick={addTodo}>Add</button>
+      </div>
+      <ul class="todo-list">
+        {#each todos as todo (todo.id)}
+          <li class:completed={todo.completed}>
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onchange={() => toggleTodo(todo.id)}
+            />
+            <span>{todo.title}</span>
+            <button class="edit" onclick={() => openTodoEditor(todo)}>Edit</button>
+            <button class="delete" onclick={() => deleteTodo(todo.id)}>&times;</button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </main>
 </div>

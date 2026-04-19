@@ -29,6 +29,8 @@ async fn add_single_todo() {
         .unwrap();
     assert_eq!(todos.len(), 1);
     assert_eq!(todos[0].title, "buy milk");
+    assert_eq!(todos[0].description, "");
+    assert_eq!(todos[0].deadline, None);
     assert!(!todos[0].completed);
 }
 
@@ -169,6 +171,38 @@ async fn delete_nonexistent_id_is_noop() {
 }
 
 #[tokio::test]
+async fn edit_updates_task_fields() {
+    let db = fresh_db().await;
+    db.begin(async |uow| TaskCommands::new(uow).add("draft").await)
+        .await
+        .unwrap();
+    let id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
+        .await
+        .unwrap()[0]
+        .id;
+
+    db.begin(async |uow| {
+        TaskCommands::new(uow)
+            .edit(
+                id,
+                "final title",
+                "expanded task details",
+                Some("2026-05-10".to_owned()),
+            )
+            .await
+    })
+    .await
+    .unwrap();
+
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
+        .await
+        .unwrap();
+    assert_eq!(todos[0].title, "final title");
+    assert_eq!(todos[0].description, "expanded task details");
+    assert_eq!(todos[0].deadline.as_deref(), Some("2026-05-10"));
+}
+
+#[tokio::test]
 async fn ids_are_unique_after_delete() {
     let db = fresh_db().await;
     db.begin(async |uow| TaskCommands::new(uow).add("first").await)
@@ -224,7 +258,11 @@ async fn full_workflow() {
         .unwrap();
     assert_eq!(todos.len(), 2);
     assert_eq!(todos[0].title, "buy groceries");
+    assert_eq!(todos[0].description, "");
+    assert_eq!(todos[0].deadline, None);
     assert!(!todos[0].completed);
     assert_eq!(todos[1].title, "write tests");
+    assert_eq!(todos[1].description, "");
+    assert_eq!(todos[1].deadline, None);
     assert!(todos[1].completed);
 }

@@ -9,6 +9,8 @@ use uuid::Uuid;
 pub struct Todo {
     pub id: Uuid,
     pub title: String,
+    pub description: String,
+    pub deadline: Option<String>,
     pub completed: bool,
     pub project_id: Option<Uuid>,
 }
