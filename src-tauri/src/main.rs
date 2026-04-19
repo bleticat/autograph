@@ -117,7 +117,7 @@ async fn update_todo(
     description: String,
     deadline: Option<String>,
     state: State<'_, AppState>,
-) -> TauriResult<Vec<Todo>> {
+) -> TauriResult<()> {
     let id = parse_uuid(&id, "todo id")?;
     state
         .db
@@ -127,9 +127,7 @@ async fn update_todo(
                 .await
         })
         .await?;
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_all_todos()
-        .await?)
+    Ok(())
 }
 
 #[tauri::command]
