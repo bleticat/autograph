@@ -49,7 +49,7 @@
     editingTodoId = todo.id;
     editTitle = todo.title;
     editDescription = todo.description ?? "";
-    editDeadline = todo.deadline ?? "";
+    editDeadline = todo.deadline ? todo.deadline.slice(0, 10) : "";
   }
 
   function closeTodoEditor() {

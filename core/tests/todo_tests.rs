@@ -1,4 +1,5 @@
 use autograph_core::{Database, SqlxDatabase, SqlxTaskQueries, TaskCommands, TaskQueries};
+use time::{Date, Month, Time};
 use uuid::Uuid;
 
 async fn fresh_db() -> SqlxDatabase {
@@ -187,7 +188,12 @@ async fn edit_updates_task_fields() {
                 id,
                 "final title",
                 "expanded task details",
-                Some("2026-05-10".to_owned()),
+                Some(
+                    Date::from_calendar_date(2026, Month::May, 10)
+                        .unwrap()
+                        .with_time(Time::MIDNIGHT)
+                        .assume_utc(),
+                ),
             )
             .await
     })
@@ -199,7 +205,10 @@ async fn edit_updates_task_fields() {
         .unwrap();
     assert_eq!(todos[0].title, "final title");
     assert_eq!(todos[0].description, "expanded task details");
-    assert_eq!(todos[0].deadline.as_deref(), Some("2026-05-10"));
+    assert_eq!(
+        todos[0].deadline.map(|deadline| deadline.date()),
+        Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
+    );
 }
 
 #[tokio::test]

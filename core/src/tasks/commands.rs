@@ -2,6 +2,7 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
 use crate::tasks::Todo;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct TaskCommands<'a, U: UnitOfWork> {
@@ -50,7 +51,7 @@ impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
         id: Uuid,
         title: &str,
         description: &str,
-        deadline: Option<String>,
+        deadline: Option<OffsetDateTime>,
     ) -> Result<(), AppErr> {
         let todo = self.uow.tasks().get(id).await?;
         if let Some(mut todo) = todo {

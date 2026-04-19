@@ -1,12 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase,
-    SqlxProjectQueries, SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
+    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxProjectQueries,
+    SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
-use time::{Date, format_description::well_known::Iso8601};
+use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
 
 type DatabaseAdapter = SqlxDatabase;
 type TaskQueryAdapter = SqlxTaskQueries;
@@ -32,7 +32,7 @@ fn parse_optional_uuid(value: Option<String>, field: &str) -> TauriResult<Option
     value.as_deref().map(|id| parse_uuid(id, field)).transpose()
 }
 
-fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<String>> {
+fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<OffsetDateTime>> {
     let Some(deadline) = deadline.map(|d| d.trim().to_owned()) else {
         return Ok(None);
     };
@@ -46,9 +46,7 @@ fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<String>> {
         ))
     })?;
 
-    date.format(&Iso8601::DEFAULT)
-        .map(Some)
-        .map_err(|err| TauriErr(format!("Failed to format deadline date: {err}")))
+    Ok(Some(date.with_time(Time::MIDNIGHT).assume_utc()))
 }
 
 struct AppState {
@@ -154,12 +152,15 @@ async fn update_todo(
 #[cfg(test)]
 mod tests {
     use super::parse_deadline;
+    use time::{Date, Month};
 
     #[test]
     fn parse_deadline_accepts_valid_iso_date() {
         assert_eq!(
-            parse_deadline(Some("2026-05-10".to_string())).unwrap(),
-            Some("2026-05-10".to_string())
+            parse_deadline(Some("2026-05-10".to_string()))
+                .unwrap()
+                .map(|deadline| deadline.date()),
+            Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
         );
     }
 
