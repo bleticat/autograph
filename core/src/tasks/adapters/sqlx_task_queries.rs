@@ -5,17 +5,17 @@ use crate::tasks::ports::task_queries::TaskQueries;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqliteTaskQueries {
+pub struct SqlxTaskQueries {
     conn: SqlxConnection,
 }
 
-impl SqliteTaskQueries {
+impl SqlxTaskQueries {
     pub fn new(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
-impl TaskQueries for SqliteTaskQueries {
+impl TaskQueries for SqlxTaskQueries {
     async fn get_all_todos(&self) -> Result<Vec<Todo>, AppErr> {
         let rows = sqlx::query("SELECT id, title, completed, project_id FROM todos ORDER BY rowid")
             .fetch_all(&self.conn)

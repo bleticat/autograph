@@ -1,15 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqliteProjectQueries,
-    SqliteTaskQueries, SqlxDatabase, TaskCommands, TaskQueries, Todo,
+    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase,
+    SqlxProjectQueries, SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 
 type DatabaseAdapter = SqlxDatabase;
-type TaskQueryAdapter = SqliteTaskQueries;
-type ProjectQueryAdapter = SqliteProjectQueries;
+type TaskQueryAdapter = SqlxTaskQueries;
+type ProjectQueryAdapter = SqlxProjectQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
 #[derive(Clone, Debug, Serialize)]

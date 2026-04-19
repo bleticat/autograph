@@ -4,17 +4,17 @@ use crate::tasks::Todo;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqliteTodoRepository<'a> {
+pub struct SqlxTodoRepository<'a> {
     tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>,
 }
 
-impl<'a> SqliteTodoRepository<'a> {
+impl<'a> SqlxTodoRepository<'a> {
     pub fn new(tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
         Self { tx }
     }
 }
 
-impl<'a> Repository<Todo> for SqliteTodoRepository<'a> {
+impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
     async fn get(&mut self, id: Uuid) -> Result<Option<Todo>, AppErr> {
         let row = sqlx::query("SELECT id, title, completed, project_id FROM todos WHERE id = ?1")
             .bind(id)

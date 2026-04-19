@@ -4,17 +4,17 @@ use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
 
-pub struct SqliteProjectQueries {
+pub struct SqlxProjectQueries {
     conn: SqlxConnection,
 }
 
-impl SqliteProjectQueries {
+impl SqlxProjectQueries {
     pub fn new(conn: SqlxConnection) -> Self {
         Self { conn }
     }
 }
 
-impl ProjectQueries for SqliteProjectQueries {
+impl ProjectQueries for SqlxProjectQueries {
     async fn get_all_projects(&self) -> Result<Vec<Project>, AppErr> {
         let rows = sqlx::query("SELECT id, title FROM projects ORDER BY rowid")
             .fetch_all(&self.conn)
