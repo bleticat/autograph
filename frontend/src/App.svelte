@@ -14,7 +14,8 @@
   let editingEventId = $state(null);
   let editTitle = $state("");
   let editDescription = $state("");
-  let editDate = $state("");
+  let editDeadline = $state("");
+  let editEventDate = $state("");
   const editingTodo = $derived(todos.find((todo) => todo.id === editingTodoId) ?? null);
   const editingEvent = $derived(events.find((event) => event.id === editingEventId) ?? null);
 
@@ -79,7 +80,8 @@
     editingEventId = null;
     editTitle = todo.title;
     editDescription = todo.description ?? "";
-    editDate = todo.deadline ? todo.deadline.slice(0, 10) : "";
+    editDeadline = todo.deadline ? todo.deadline.slice(0, 10) : "";
+    editEventDate = "";
   }
 
   function openEventEditor(event) {
@@ -87,7 +89,8 @@
     editingTodoId = null;
     editTitle = event.title;
     editDescription = event.description ?? "";
-    editDate = event.date ? event.date.slice(0, 10) : "";
+    editEventDate = event.date ? event.date.slice(0, 10) : "";
+    editDeadline = "";
   }
 
   function closeEditor() {
@@ -95,7 +98,8 @@
     editingEventId = null;
     editTitle = "";
     editDescription = "";
-    editDate = "";
+    editDeadline = "";
+    editEventDate = "";
   }
 
   async function saveTodoEdits() {
@@ -105,7 +109,7 @@
       id: editingTodoId,
       title,
       description: editDescription.trim(),
-      deadline: editDate || null,
+      deadline: editDeadline || null,
     });
     await loadTodos();
     closeEditor();
@@ -113,12 +117,12 @@
 
   async function saveEventEdits() {
     const title = editTitle.trim();
-    if (!editingEventId || !title || !editDate) return;
+    if (!editingEventId || !title || !editEventDate) return;
     await invoke("update_event", {
       id: editingEventId,
       title,
       description: editDescription.trim(),
-      date: editDate,
+      date: editEventDate,
     });
     await loadEvents();
     closeEditor();
@@ -241,7 +245,7 @@
         </label>
         <label>
           Deadline
-          <input type="date" bind:value={editDate} />
+          <input type="date" bind:value={editDeadline} />
         </label>
         <div class="edit-actions">
           <button onclick={saveTodoEdits}>Save</button>
@@ -257,7 +261,7 @@
         </label>
         <label>
           Date
-          <input type="date" bind:value={editDate} />
+          <input type="date" bind:value={editEventDate} />
         </label>
         <label>
           Description
