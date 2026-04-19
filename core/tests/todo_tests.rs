@@ -1,4 +1,4 @@
-use autograph_core::{Database, SqliteTaskQueries, SqlxDatabase, TaskCommands, TaskQueries};
+use autograph_core::{Database, SqlxDatabase, SqlxTaskQueries, TaskCommands, TaskQueries};
 use uuid::Uuid;
 
 async fn fresh_db() -> SqlxDatabase {
@@ -12,7 +12,7 @@ async fn fresh_db() -> SqlxDatabase {
 #[tokio::test]
 async fn empty_database_returns_no_todos() {
     let db = fresh_db().await;
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert!(todos.is_empty());
@@ -24,7 +24,7 @@ async fn add_single_todo() {
     db.begin(async |uow| TaskCommands::new(uow).add("buy milk").await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert_eq!(todos.len(), 1);
@@ -40,7 +40,7 @@ async fn add_multiple_todos_preserves_order() {
             .await
             .unwrap();
     }
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert_eq!(todos.len(), 3);
@@ -55,7 +55,7 @@ async fn toggle_marks_completed() {
     db.begin(async |uow| TaskCommands::new(uow).add("task").await)
         .await
         .unwrap();
-    let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
@@ -63,7 +63,7 @@ async fn toggle_marks_completed() {
     db.begin(async |uow| TaskCommands::new(uow).toggle(id).await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert!(todos[0].completed);
@@ -75,7 +75,7 @@ async fn toggle_twice_restores_incomplete() {
     db.begin(async |uow| TaskCommands::new(uow).add("task").await)
         .await
         .unwrap();
-    let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
@@ -86,7 +86,7 @@ async fn toggle_twice_restores_incomplete() {
     db.begin(async |uow| TaskCommands::new(uow).toggle(id).await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert!(!todos[0].completed);
@@ -98,7 +98,7 @@ async fn delete_removes_todo() {
     db.begin(async |uow| TaskCommands::new(uow).add("to delete").await)
         .await
         .unwrap();
-    let id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
@@ -106,7 +106,7 @@ async fn delete_removes_todo() {
     db.begin(async |uow| TaskCommands::new(uow).delete(id).await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert!(todos.is_empty());
@@ -121,7 +121,7 @@ async fn delete_only_target_todo() {
     db.begin(async |uow| TaskCommands::new(uow).add("remove").await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     let remove_id = todos[1].id;
@@ -129,7 +129,7 @@ async fn delete_only_target_todo() {
     db.begin(async |uow| TaskCommands::new(uow).delete(remove_id).await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert_eq!(todos.len(), 1);
@@ -143,7 +143,7 @@ async fn toggle_nonexistent_id_is_noop() {
         .await
         .unwrap();
     assert!(
-        (SqliteTaskQueries::new(db.conn()).get_all_todos())
+        (SqlxTaskQueries::new(db.conn()).get_all_todos())
             .await
             .unwrap()
             .is_empty()
@@ -160,7 +160,7 @@ async fn delete_nonexistent_id_is_noop() {
         .await
         .unwrap();
     assert_eq!(
-        (SqliteTaskQueries::new(db.conn()).get_all_todos())
+        (SqlxTaskQueries::new(db.conn()).get_all_todos())
             .await
             .unwrap()
             .len(),
@@ -174,7 +174,7 @@ async fn ids_are_unique_after_delete() {
     db.begin(async |uow| TaskCommands::new(uow).add("first").await)
         .await
         .unwrap();
-    let first_id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let first_id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
@@ -185,7 +185,7 @@ async fn ids_are_unique_after_delete() {
     db.begin(async |uow| TaskCommands::new(uow).add("second").await)
         .await
         .unwrap();
-    let second_id = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let second_id = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap()[0]
         .id;
@@ -204,7 +204,7 @@ async fn full_workflow() {
     }
 
     // Complete one
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     let middle_todo_id = todos[1].id;
@@ -219,7 +219,7 @@ async fn full_workflow() {
         .unwrap();
 
     // Verify final state
-    let todos = (SqliteTaskQueries::new(db.conn()).get_all_todos())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
         .await
         .unwrap();
     assert_eq!(todos.len(), 2);

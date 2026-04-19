@@ -1,5 +1,5 @@
 use autograph_core::{
-    Database, ProjectCommands, ProjectQueries, SqliteProjectQueries, SqliteTaskQueries,
+    Database, ProjectCommands, ProjectQueries, SqlxProjectQueries, SqlxTaskQueries,
     SqlxDatabase, TaskCommands, TaskQueries,
 };
 
@@ -14,7 +14,7 @@ async fn fresh_db() -> SqlxDatabase {
 #[tokio::test]
 async fn empty_database_returns_no_projects() {
     let db = fresh_db().await;
-    let projects = (SqliteProjectQueries::new(db.conn()).get_all_projects())
+    let projects = (SqlxProjectQueries::new(db.conn()).get_all_projects())
         .await
         .unwrap();
     assert!(projects.is_empty());
@@ -29,7 +29,7 @@ async fn add_single_project() {
     })
     .await
     .unwrap();
-    let projects = (SqliteProjectQueries::new(db.conn()).get_all_projects())
+    let projects = (SqlxProjectQueries::new(db.conn()).get_all_projects())
         .await
         .unwrap();
     assert_eq!(projects.len(), 1);
@@ -47,7 +47,7 @@ async fn add_multiple_projects_preserves_order() {
         .await
         .unwrap();
     }
-    let projects = (SqliteProjectQueries::new(db.conn()).get_all_projects())
+    let projects = (SqlxProjectQueries::new(db.conn()).get_all_projects())
         .await
         .unwrap();
     assert_eq!(projects.len(), 3);
@@ -62,7 +62,7 @@ async fn todos_without_project_by_default() {
     db.begin(async |uow| TaskCommands::new(uow).add("inbox task").await)
         .await
         .unwrap();
-    let todos = (SqliteTaskQueries::new(db.conn()).get_todos_without_project())
+    let todos = (SqlxTaskQueries::new(db.conn()).get_todos_without_project())
         .await
         .unwrap();
     assert_eq!(todos.len(), 1);
@@ -87,14 +87,14 @@ async fn add_todo_with_project() {
     .await
     .unwrap();
 
-    let todos_by_project = (SqliteTaskQueries::new(db.conn()).get_todos_by_project(project_id))
+    let todos_by_project = (SqlxTaskQueries::new(db.conn()).get_todos_by_project(project_id))
         .await
         .unwrap();
     assert_eq!(todos_by_project.len(), 1);
     assert_eq!(todos_by_project[0].title, "write report");
     assert_eq!(todos_by_project[0].project_id, Some(project_id));
 
-    let todos_without = (SqliteTaskQueries::new(db.conn()).get_todos_without_project())
+    let todos_without = (SqlxTaskQueries::new(db.conn()).get_todos_without_project())
         .await
         .unwrap();
     assert!(todos_without.is_empty());
@@ -132,19 +132,19 @@ async fn tasks_are_filtered_by_project() {
         .await
         .unwrap();
 
-    let p1_todos = (SqliteTaskQueries::new(db.conn()).get_todos_by_project(p1))
+    let p1_todos = (SqlxTaskQueries::new(db.conn()).get_todos_by_project(p1))
         .await
         .unwrap();
     assert_eq!(p1_todos.len(), 1);
     assert_eq!(p1_todos[0].title, "task for A");
 
-    let p2_todos = (SqliteTaskQueries::new(db.conn()).get_todos_by_project(p2))
+    let p2_todos = (SqlxTaskQueries::new(db.conn()).get_todos_by_project(p2))
         .await
         .unwrap();
     assert_eq!(p2_todos.len(), 1);
     assert_eq!(p2_todos[0].title, "task for B");
 
-    let no_project = (SqliteTaskQueries::new(db.conn()).get_todos_without_project())
+    let no_project = (SqlxTaskQueries::new(db.conn()).get_todos_without_project())
         .await
         .unwrap();
     assert_eq!(no_project.len(), 1);

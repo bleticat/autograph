@@ -4,17 +4,17 @@ use crate::shared::ports::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqliteProjectRepository<'a> {
+pub struct SqlxProjectRepository<'a> {
     tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>,
 }
 
-impl<'a> SqliteProjectRepository<'a> {
+impl<'a> SqlxProjectRepository<'a> {
     pub fn new(tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
         Self { tx }
     }
 }
 
-impl<'a> Repository<Project> for SqliteProjectRepository<'a> {
+impl<'a> Repository<Project> for SqlxProjectRepository<'a> {
     async fn get(&mut self, id: Uuid) -> Result<Option<Project>, AppErr> {
         let row = sqlx::query("SELECT id, title FROM projects WHERE id = ?1")
             .bind(id)
