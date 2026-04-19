@@ -1,17 +1,22 @@
+pub mod events;
 pub mod projects;
 pub mod shared;
 pub mod tasks;
 
+pub use events::Event;
+pub use events::adapters::sqlx_event_queries::SqlxEventQueries;
+pub use events::commands::EventCommands;
+pub use events::ports::event_queries::EventQueries;
+pub use projects::Project;
 pub use projects::adapters::sqlx_project_queries::SqlxProjectQueries;
 pub use projects::commands::ProjectCommands;
 pub use projects::ports::project_queries::ProjectQueries;
-pub use projects::Project;
 pub use shared::adapters::database::sqlx_database::SqlxDatabase;
 pub use shared::adapters::database::sqlx_unit_of_work::SqlxUnitOfWork;
 pub use shared::error::AppErr;
 pub use shared::ports::database::Database;
 pub use shared::ports::unit_of_work::UnitOfWork;
+pub use tasks::Todo;
 pub use tasks::adapters::sqlx_task_queries::SqlxTaskQueries;
 pub use tasks::commands::TaskCommands;
 pub use tasks::ports::task_queries::TaskQueries;
-pub use tasks::Todo;

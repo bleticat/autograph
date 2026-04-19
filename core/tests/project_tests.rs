@@ -1,6 +1,6 @@
 use autograph_core::{
-    Database, ProjectCommands, ProjectQueries, SqlxProjectQueries, SqlxTaskQueries,
-    SqlxDatabase, TaskCommands, TaskQueries,
+    Database, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxProjectQueries, SqlxTaskQueries,
+    TaskCommands, TaskQueries,
 };
 
 async fn fresh_db() -> SqlxDatabase {

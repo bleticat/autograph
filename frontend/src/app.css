@@ -111,6 +111,26 @@ h1 {
   color: #e0e0ff;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tabs button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #2d3561;
+  color: #d4dcff;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: #5c6bc0;
+  color: #fff;
+}
+
 .input-row {
   display: flex;
   gap: 8px;
@@ -145,6 +165,59 @@ h1 {
 
 .input-row button:hover {
   background: #7986cb;
+}
+
+.event-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.event-input-row input {
+  padding: 10px 12px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #16213e;
+  color: #eee;
+}
+
+.event-input-row input:first-child {
+  flex: 1;
+}
+
+.event-input-row button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #5c6bc0;
+  color: white;
+  cursor: pointer;
+}
+
+.event-list {
+  list-style: none;
+}
+
+.event-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: #16213e;
+  border-radius: 6px;
+}
+
+.event-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.event-date {
+  font-size: 0.8rem;
+  color: #b7c0f7;
 }
 
 .todo-list {
