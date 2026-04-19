@@ -1,8 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxProjectQueries,
-    SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
+    AppErr, Database, Event, EventCommands, EventQueries, Project, ProjectCommands, ProjectQueries,
+    SqlxDatabase, SqlxEventQueries, SqlxProjectQueries, SqlxTaskQueries, TaskCommands, TaskQueries,
+    Todo,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
@@ -10,6 +11,7 @@ use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
 
 type DatabaseAdapter = SqlxDatabase;
 type TaskQueryAdapter = SqlxTaskQueries;
+type EventQueryAdapter = SqlxEventQueries;
 type ProjectQueryAdapter = SqlxProjectQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
@@ -47,6 +49,21 @@ fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<OffsetDateTime
     })?;
 
     Ok(Some(date.with_time(Time::MIDNIGHT).assume_utc()))
+}
+
+fn parse_event_date(date: String) -> TauriResult<OffsetDateTime> {
+    let date = date.trim();
+    if date.is_empty() {
+        return Err(TauriErr("Event date is required".to_owned()));
+    }
+
+    let date = Date::parse(date, &Iso8601::DEFAULT).map_err(|err| {
+        TauriErr(format!(
+            "Invalid event date format, expected YYYY-MM-DD: {err}"
+        ))
+    })?;
+
+    Ok(date.with_time(Time::MIDNIGHT).assume_utc())
 }
 
 struct AppState {
@@ -149,9 +166,90 @@ async fn update_todo(
     Ok(())
 }
 
+#[tauri::command]
+async fn get_events(state: State<'_, AppState>) -> TauriResult<Vec<Event>> {
+    Ok(EventQueryAdapter::new(state.db.conn())
+        .get_all_events()
+        .await?)
+}
+
+#[tauri::command]
+async fn get_events_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Event>> {
+    Ok(EventQueryAdapter::new(state.db.conn())
+        .get_events_without_project()
+        .await?)
+}
+
+#[tauri::command]
+async fn get_events_by_project(
+    project_id: String,
+    state: State<'_, AppState>,
+) -> TauriResult<Vec<Event>> {
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    Ok(EventQueryAdapter::new(state.db.conn())
+        .get_events_by_project(project_id)
+        .await?)
+}
+
+#[tauri::command]
+async fn add_event(
+    date: String,
+    title: String,
+    description: String,
+    project_id: Option<String>,
+    state: State<'_, AppState>,
+) -> TauriResult<Vec<Event>> {
+    let date = parse_event_date(date)?;
+    let project_id = parse_optional_uuid(project_id, "project_id")?;
+
+    state
+        .db
+        .begin(async |uow| {
+            match project_id {
+                Some(pid) => {
+                    EventCommands::new(uow)
+                        .add_with_project(date, &title, &description, pid)
+                        .await?;
+                }
+                None => {
+                    EventCommands::new(uow)
+                        .add(date, &title, &description)
+                        .await?;
+                }
+            }
+            Ok(())
+        })
+        .await?;
+
+    Ok(EventQueryAdapter::new(state.db.conn())
+        .get_all_events()
+        .await?)
+}
+
+#[tauri::command]
+async fn update_event(
+    id: String,
+    date: String,
+    title: String,
+    description: String,
+    state: State<'_, AppState>,
+) -> TauriResult<()> {
+    let id = parse_uuid(&id, "event id")?;
+    let date = parse_event_date(date)?;
+    state
+        .db
+        .begin(async |uow| {
+            EventCommands::new(uow)
+                .edit(id, date, &title, &description)
+                .await
+        })
+        .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::parse_deadline;
+    use super::{parse_deadline, parse_event_date};
     use time::{Date, Month};
 
     #[test]
@@ -172,6 +270,19 @@ mod tests {
     #[test]
     fn parse_deadline_rejects_invalid_date() {
         assert!(parse_deadline(Some("2026-13-10".to_string())).is_err());
+    }
+
+    #[test]
+    fn parse_event_date_accepts_valid_iso_date() {
+        assert_eq!(
+            parse_event_date("2026-05-10".to_string()).unwrap().date(),
+            Date::from_calendar_date(2026, Month::May, 10).unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_event_date_rejects_empty_string() {
+        assert!(parse_event_date("   ".to_string()).is_err());
     }
 }
 
@@ -211,6 +322,11 @@ fn main() {
             toggle_todo,
             delete_todo,
             update_todo,
+            get_events,
+            get_events_without_project,
+            get_events_by_project,
+            add_event,
+            update_event,
             get_projects,
             add_project,
         ])

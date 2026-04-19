@@ -3,14 +3,21 @@
 
   let projects = $state([]);
   let todos = $state([]);
+  let events = $state([]);
   let selectedProjectId = $state(null); // null = "No Project" view
+  let selectedTab = $state("todos");
   let todoInput = $state("");
+  let eventTitleInput = $state("");
+  let eventDateInput = $state("");
   let projectInput = $state("");
   let editingTodoId = $state(null);
+  let editingEventId = $state(null);
   let editTitle = $state("");
   let editDescription = $state("");
   let editDeadline = $state("");
+  let editEventDate = $state("");
   const editingTodo = $derived(todos.find((todo) => todo.id === editingTodoId) ?? null);
+  const editingEvent = $derived(events.find((event) => event.id === editingEventId) ?? null);
 
   async function loadProjects() {
     projects = await invoke("get_projects");
@@ -35,6 +42,29 @@
     await loadTodos();
   }
 
+  async function loadEvents() {
+    if (selectedProjectId === null) {
+      events = await invoke("get_events_without_project");
+    } else {
+      events = await invoke("get_events_by_project", { projectId: selectedProjectId });
+    }
+  }
+
+  async function addEvent() {
+    const title = eventTitleInput.trim();
+    const date = eventDateInput;
+    if (!title || !date) return;
+    eventTitleInput = "";
+    eventDateInput = "";
+    await invoke("add_event", {
+      title,
+      date,
+      description: "",
+      projectId: selectedProjectId,
+    });
+    await loadEvents();
+  }
+
   async function toggleTodo(id) {
     await invoke("toggle_todo", { id });
     await loadTodos();
@@ -47,16 +77,29 @@
 
   function openTodoEditor(todo) {
     editingTodoId = todo.id;
+    editingEventId = null;
     editTitle = todo.title;
     editDescription = todo.description ?? "";
     editDeadline = todo.deadline ? todo.deadline.slice(0, 10) : "";
+    editEventDate = "";
   }
 
-  function closeTodoEditor() {
+  function openEventEditor(event) {
+    editingEventId = event.id;
     editingTodoId = null;
+    editTitle = event.title;
+    editDescription = event.description ?? "";
+    editEventDate = event.date ? event.date.slice(0, 10) : "";
+    editDeadline = "";
+  }
+
+  function closeEditor() {
+    editingTodoId = null;
+    editingEventId = null;
     editTitle = "";
     editDescription = "";
     editDeadline = "";
+    editEventDate = "";
   }
 
   async function saveTodoEdits() {
@@ -69,7 +112,20 @@
       deadline: editDeadline || null,
     });
     await loadTodos();
-    closeTodoEditor();
+    closeEditor();
+  }
+
+  async function saveEventEdits() {
+    const title = editTitle.trim();
+    if (!editingEventId || !title || !editEventDate) return;
+    await invoke("update_event", {
+      id: editingEventId,
+      title,
+      description: editDescription.trim(),
+      date: editEventDate,
+    });
+    await loadEvents();
+    closeEditor();
   }
 
   async function addProject() {
@@ -81,7 +137,13 @@
 
   function selectProject(id) {
     selectedProjectId = id;
-    closeTodoEditor();
+    selectedTab = "todos";
+    closeEditor();
+  }
+
+  function selectTab(tab) {
+    selectedTab = tab;
+    closeEditor();
   }
 
   function handleTodoKeydown(e) {
@@ -92,17 +154,28 @@
     if (e.key === "Enter") addProject();
   }
 
+  function handleEventKeydown(e) {
+    if (e.key === "Enter") addEvent();
+  }
+
   $effect(() => {
     loadProjects();
   });
 
   $effect(() => {
-    loadTodos();
+    if (selectedTab === "events") {
+      loadEvents();
+    } else {
+      loadTodos();
+    }
   });
 
   $effect(() => {
     if (editingTodoId !== null && !todos.some((todo) => todo.id === editingTodoId)) {
-      closeTodoEditor();
+      closeEditor();
+    }
+    if (editingEventId !== null && !events.some((event) => event.id === editingEventId)) {
+      closeEditor();
     }
   });
 </script>
@@ -143,6 +216,22 @@
         ? "Inbox"
         : projects.find((p) => p.id === selectedProjectId)?.title ?? "Inbox"}
     </h1>
+    {#if selectedProjectId !== null}
+      <div class="tabs">
+        <button
+          class:active={selectedTab === "todos"}
+          onclick={() => selectTab("todos")}
+        >
+          Todos
+        </button>
+        <button
+          class:active={selectedTab === "events"}
+          onclick={() => selectTab("events")}
+        >
+          Events
+        </button>
+      </div>
+    {/if}
     {#if editingTodo}
       <section class="edit-page">
         <h2>Edit task</h2>
@@ -160,9 +249,51 @@
         </label>
         <div class="edit-actions">
           <button onclick={saveTodoEdits}>Save</button>
-          <button class="secondary" onclick={closeTodoEditor}>Back</button>
+          <button class="secondary" onclick={closeEditor}>Back</button>
         </div>
       </section>
+    {:else if editingEvent}
+      <section class="edit-page">
+        <h2>Edit event</h2>
+        <label>
+          Title
+          <input type="text" bind:value={editTitle} />
+        </label>
+        <label>
+          Date
+          <input type="date" bind:value={editEventDate} />
+        </label>
+        <label>
+          Description
+          <textarea rows="4" bind:value={editDescription}></textarea>
+        </label>
+        <div class="edit-actions">
+          <button onclick={saveEventEdits}>Save</button>
+          <button class="secondary" onclick={closeEditor}>Back</button>
+        </div>
+      </section>
+    {:else if selectedTab === "events"}
+      <div class="event-input-row">
+        <input
+          type="text"
+          placeholder="Event title"
+          bind:value={eventTitleInput}
+          onkeydown={handleEventKeydown}
+        />
+        <input type="date" bind:value={eventDateInput} />
+        <button onclick={addEvent}>Add</button>
+      </div>
+      <ul class="event-list">
+        {#each events as event (event.id)}
+          <li>
+            <div class="event-main">
+              <span class="event-date">{event.date.slice(0, 10)}</span>
+              <span>{event.title}</span>
+            </div>
+            <button class="edit" onclick={() => openEventEditor(event)}>Edit</button>
+          </li>
+        {/each}
+      </ul>
     {:else}
       <div class="input-row">
         <input
