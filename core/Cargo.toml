@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-sqlx = { version = "0.8", default-features = false, features = ["sqlite", "uuid", "macros", "migrate", "runtime-tokio-rustls"] }
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "uuid", "time", "macros", "migrate", "runtime-tokio-rustls"] }
+time = { version = "0.3", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4"] }
 
 [dev-dependencies]

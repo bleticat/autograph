@@ -1,11 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph_core::{
-    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase,
-    SqlxProjectQueries, SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
+    AppErr, Database, Project, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxProjectQueries,
+    SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
+use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
 
 type DatabaseAdapter = SqlxDatabase;
 type TaskQueryAdapter = SqlxTaskQueries;
@@ -29,6 +30,23 @@ fn parse_uuid(value: &str, field: &str) -> TauriResult<uuid::Uuid> {
 
 fn parse_optional_uuid(value: Option<String>, field: &str) -> TauriResult<Option<uuid::Uuid>> {
     value.as_deref().map(|id| parse_uuid(id, field)).transpose()
+}
+
+fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<OffsetDateTime>> {
+    let Some(deadline) = deadline.map(|d| d.trim().to_owned()) else {
+        return Ok(None);
+    };
+    if deadline.is_empty() {
+        return Ok(None);
+    }
+
+    let date = Date::parse(&deadline, &Iso8601::DEFAULT).map_err(|err| {
+        TauriErr(format!(
+            "Invalid deadline date format, expected YYYY-MM-DD: {err}"
+        ))
+    })?;
+
+    Ok(Some(date.with_time(Time::MIDNIGHT).assume_utc()))
 }
 
 struct AppState {
@@ -111,6 +129,53 @@ async fn delete_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<
 }
 
 #[tauri::command]
+async fn update_todo(
+    id: String,
+    title: String,
+    description: String,
+    deadline: Option<String>,
+    state: State<'_, AppState>,
+) -> TauriResult<()> {
+    let id = parse_uuid(&id, "todo id")?;
+    let deadline = parse_deadline(deadline)?;
+    state
+        .db
+        .begin(async |uow| {
+            TaskCommands::new(uow)
+                .edit(id, &title, &description, deadline)
+                .await
+        })
+        .await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_deadline;
+    use time::{Date, Month};
+
+    #[test]
+    fn parse_deadline_accepts_valid_iso_date() {
+        assert_eq!(
+            parse_deadline(Some("2026-05-10".to_string()))
+                .unwrap()
+                .map(|deadline| deadline.date()),
+            Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_deadline_normalizes_empty_to_none() {
+        assert_eq!(parse_deadline(Some("   ".to_string())).unwrap(), None);
+    }
+
+    #[test]
+    fn parse_deadline_rejects_invalid_date() {
+        assert!(parse_deadline(Some("2026-13-10".to_string())).is_err());
+    }
+}
+
+#[tauri::command]
 async fn get_projects(state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
     Ok(ProjectQueryAdapter::new(state.db.conn())
         .get_all_projects()
@@ -145,6 +210,7 @@ fn main() {
             add_todo,
             toggle_todo,
             delete_todo,
+            update_todo,
             get_projects,
             add_project,
         ])
