@@ -25,7 +25,12 @@
 
   async function loadTodos() {
     if (selectedProjectId === null) {
-      todos = await invoke("get_todos_without_project");
+      try {
+        const sidecarOutput = await invoke("get_sidecar_todos_without_project");
+        todos = JSON.parse(sidecarOutput);
+      } catch (_error) {
+        todos = await invoke("get_todos_without_project");
+      }
     } else {
       todos = await invoke("get_todos_by_project", { projectId: selectedProjectId });
     }

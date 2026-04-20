@@ -24,6 +24,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "../autograph/fake_todos.py"
+    ],
     "icon": [
       "icons/icon.png"
     ]
