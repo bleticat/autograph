@@ -2,7 +2,7 @@ use crate::event::entity::Event;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 pub struct EventCommands<'a, U: UnitOfWork> {
@@ -16,7 +16,7 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
 
     pub async fn add(
         &mut self,
-        date: OffsetDateTime,
+        date: DateTime<Utc>,
         title: &str,
         description: &str,
     ) -> Result<Event, AppErr> {
@@ -34,7 +34,7 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
 
     pub async fn add_with_project(
         &mut self,
-        date: OffsetDateTime,
+        date: DateTime<Utc>,
         title: &str,
         description: &str,
         project_id: Uuid,
@@ -54,7 +54,7 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
     pub async fn edit(
         &mut self,
         id: Uuid,
-        date: OffsetDateTime,
+        date: DateTime<Utc>,
         title: &str,
         description: &str,
     ) -> Result<(), AppErr> {

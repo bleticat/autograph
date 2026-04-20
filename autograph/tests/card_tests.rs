@@ -1,8 +1,8 @@
+use chrono::NaiveDate;
 use autograph::{
     CardCommands, CardQueries, Database, DatabaseBuilder, SqlxCardQueries, SqlxDatabase,
     SqlxDatabaseBuilder,
 };
-use time::{Date, Month, Time};
 use uuid::Uuid;
 
 async fn fresh_db() -> SqlxDatabase {
@@ -192,10 +192,11 @@ async fn edit_updates_card_fields() {
                 "final title",
                 "expanded card details",
                 Some(
-                    Date::from_calendar_date(2026, Month::May, 10)
+                    NaiveDate::from_ymd_opt(2026, 5, 10)
                         .unwrap()
-                        .with_time(Time::MIDNIGHT)
-                        .assume_utc(),
+                        .and_hms_opt(0, 0, 0)
+                        .unwrap()
+                        .and_utc(),
                 ),
             )
             .await
@@ -209,8 +210,8 @@ async fn edit_updates_card_fields() {
     assert_eq!(cards[0].title, "final title");
     assert_eq!(cards[0].description, "expanded card details");
     assert_eq!(
-        cards[0].deadline.map(|deadline| deadline.date()),
-        Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
+        cards[0].deadline.map(|deadline| deadline.date_naive()),
+        Some(NaiveDate::from_ymd_opt(2026, 5, 10).unwrap())
     );
 }
 

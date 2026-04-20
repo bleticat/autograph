@@ -1,35 +1,37 @@
 use crate::shared::error::AppErr;
-use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
+use chrono::{DateTime, NaiveDate, Utc};
 
-pub fn parse_date(s: &str) -> Result<OffsetDateTime, AppErr> {
+pub fn parse_date(s: &str) -> Result<DateTime<Utc>, AppErr> {
     let s = s.trim();
     if s.is_empty() {
         return Err(AppErr::Parse("date is required".to_owned()));
     }
-    let date = Date::parse(s, &Iso8601::DEFAULT)
+    let date = NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|e| AppErr::Parse(format!("invalid date, expected YYYY-MM-DD: {e}")))?;
-    Ok(date.with_time(Time::MIDNIGHT).assume_utc())
+    Ok(date.and_hms_opt(0, 0, 0).expect("valid midnight").and_utc())
 }
 
-pub fn parse_optional_date(s: Option<&str>) -> Result<Option<OffsetDateTime>, AppErr> {
+pub fn parse_optional_date(s: Option<&str>) -> Result<Option<DateTime<Utc>>, AppErr> {
     let Some(s) = s.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
-    let date = Date::parse(s, &Iso8601::DEFAULT)
+    let date = NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|e| AppErr::Parse(format!("invalid date, expected YYYY-MM-DD: {e}")))?;
-    Ok(Some(date.with_time(Time::MIDNIGHT).assume_utc()))
+    Ok(Some(
+        date.and_hms_opt(0, 0, 0).expect("valid midnight").and_utc(),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::{parse_date, parse_optional_date};
-    use time::{Date, Month};
+    use chrono::NaiveDate;
 
     #[test]
     fn parse_date_accepts_valid_iso_date() {
         assert_eq!(
-            parse_date("2026-05-10").unwrap().date(),
-            Date::from_calendar_date(2026, Month::May, 10).unwrap()
+            parse_date("2026-05-10").unwrap().date_naive(),
+            NaiveDate::from_ymd_opt(2026, 5, 10).unwrap()
         );
     }
 
@@ -43,8 +45,8 @@ mod tests {
         assert_eq!(
             parse_optional_date(Some("2026-05-10"))
                 .unwrap()
-                .map(|d| d.date()),
-            Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
+                .map(|d| d.date_naive()),
+            Some(NaiveDate::from_ymd_opt(2026, 5, 10).unwrap())
         );
     }
 

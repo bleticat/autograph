@@ -1,8 +1,8 @@
+use chrono::NaiveDate;
 use autograph::{
     Database, DatabaseBuilder, EventCommands, EventQueries, ProjectCommands, SqlxDatabase,
     SqlxDatabaseBuilder, SqlxEventQueries,
 };
-use time::{Date, Month, Time};
 
 async fn fresh_db() -> SqlxDatabase {
     SqlxDatabaseBuilder::open(":memory:")
@@ -25,10 +25,11 @@ async fn events_are_filtered_by_project() {
         .await
         .unwrap()
         .id;
-    let date = Date::from_calendar_date(2026, Month::May, 10)
+    let date = NaiveDate::from_ymd_opt(2026, 5, 10)
         .unwrap()
-        .with_time(Time::MIDNIGHT)
-        .assume_utc();
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
 
     db.begin(async |uow| {
         EventCommands::new(uow)
@@ -70,10 +71,11 @@ async fn events_are_filtered_by_project() {
 #[tokio::test]
 async fn edit_event_updates_fields() {
     let db = fresh_db().await;
-    let date = Date::from_calendar_date(2026, Month::May, 10)
+    let date = NaiveDate::from_ymd_opt(2026, 5, 10)
         .unwrap()
-        .with_time(Time::MIDNIGHT)
-        .assume_utc();
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
 
     db.begin(async |uow| EventCommands::new(uow).add(date, "Kickoff", "").await)
         .await
@@ -83,10 +85,11 @@ async fn edit_event_updates_fields() {
         .unwrap()[0]
         .id;
 
-    let updated_date = Date::from_calendar_date(2026, Month::May, 11)
+    let updated_date = NaiveDate::from_ymd_opt(2026, 5, 11)
         .unwrap()
-        .with_time(Time::MIDNIGHT)
-        .assume_utc();
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
     db.begin(async |uow| {
         EventCommands::new(uow)
             .edit(
@@ -107,7 +110,7 @@ async fn edit_event_updates_fields() {
     assert_eq!(event.title, "Updated kickoff");
     assert_eq!(event.description, "Agenda confirmed");
     assert_eq!(
-        event.date.date(),
-        Date::from_calendar_date(2026, Month::May, 11).unwrap()
+        event.date.date_naive(),
+        NaiveDate::from_ymd_opt(2026, 5, 11).unwrap()
     );
 }
