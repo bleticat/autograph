@@ -1,16 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use autograph_core::{
+use autograph::{
     AppErr, Database, Event, EventCommands, EventQueries, Project, ProjectCommands, ProjectQueries,
-    SqlxDatabase, SqlxEventQueries, SqlxProjectQueries, SqlxTaskQueries, TaskCommands, TaskQueries,
-    Todo,
+    SqlxDatabase, SqlxEventQueries, SqlxProjectQueries, SqlxCardQueries, CardCommands, CardQueries,
+    Card,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
 
 type DatabaseAdapter = SqlxDatabase;
-type TaskQueryAdapter = SqlxTaskQueries;
+type CardQueryAdapter = SqlxCardQueries;
 type EventQueryAdapter = SqlxEventQueries;
 type ProjectQueryAdapter = SqlxProjectQueries;
 type TauriResult<T> = Result<T, TauriErr>;
@@ -71,94 +71,94 @@ struct AppState {
 }
 
 #[tauri::command]
-async fn get_todos(state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_all_todos()
+async fn get_cards(state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_all_cards()
         .await?)
 }
 
 #[tauri::command]
-async fn get_todos_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_todos_without_project()
+async fn get_cards_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_cards_without_project()
         .await?)
 }
 
 #[tauri::command]
-async fn get_todos_by_project(
+async fn get_cards_by_project(
     project_id: String,
     state: State<'_, AppState>,
-) -> TauriResult<Vec<Todo>> {
+) -> TauriResult<Vec<Card>> {
     let project_id = parse_uuid(&project_id, "project_id")?;
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_todos_by_project(project_id)
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_cards_by_project(project_id)
         .await?)
 }
 
 #[tauri::command]
-async fn add_todo(
+async fn add_card(
     title: String,
     project_id: Option<String>,
     state: State<'_, AppState>,
-) -> TauriResult<Vec<Todo>> {
+) -> TauriResult<Vec<Card>> {
     let project_id = parse_optional_uuid(project_id, "project_id")?;
     state
         .db
         .begin(async |uow| {
             match project_id {
                 Some(pid) => {
-                    TaskCommands::new(uow).add_with_project(&title, pid).await?;
+                    CardCommands::new(uow).add_with_project(&title, pid).await?;
                 }
                 None => {
-                    TaskCommands::new(uow).add(&title).await?;
+                    CardCommands::new(uow).add(&title).await?;
                 }
             }
             Ok(())
         })
         .await?;
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_all_todos()
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_all_cards()
         .await?)
 }
 
 #[tauri::command]
-async fn toggle_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    let id = parse_uuid(&id, "todo id")?;
+async fn toggle_card(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+    let id = parse_uuid(&id, "card id")?;
     state
         .db
-        .begin(async |uow| TaskCommands::new(uow).toggle(id).await)
+        .begin(async |uow| CardCommands::new(uow).toggle(id).await)
         .await?;
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_all_todos()
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_all_cards()
         .await?)
 }
 
 #[tauri::command]
-async fn delete_todo(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Todo>> {
-    let id = parse_uuid(&id, "todo id")?;
+async fn delete_card(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+    let id = parse_uuid(&id, "card id")?;
     state
         .db
-        .begin(async |uow| TaskCommands::new(uow).delete(id).await)
+        .begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await?;
-    Ok(TaskQueryAdapter::new(state.db.conn())
-        .get_all_todos()
+    Ok(CardQueryAdapter::new(state.db.conn())
+        .get_all_cards()
         .await?)
 }
 
 #[tauri::command]
-async fn update_todo(
+async fn update_card(
     id: String,
     title: String,
     description: String,
     deadline: Option<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<()> {
-    let id = parse_uuid(&id, "todo id")?;
+    let id = parse_uuid(&id, "card id")?;
     let deadline = parse_deadline(deadline)?;
     state
         .db
         .begin(async |uow| {
-            TaskCommands::new(uow)
+            CardCommands::new(uow)
                 .edit(id, &title, &description, deadline)
                 .await
         })
@@ -315,13 +315,13 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState { db })
         .invoke_handler(tauri::generate_handler![
-            get_todos,
-            get_todos_without_project,
-            get_todos_by_project,
-            add_todo,
-            toggle_todo,
-            delete_todo,
-            update_todo,
+            get_cards,
+            get_cards_without_project,
+            get_cards_by_project,
+            add_card,
+            toggle_card,
+            delete_card,
+            update_card,
             get_events,
             get_events_without_project,
             get_events_by_project,

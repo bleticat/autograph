@@ -1,2 +1,0 @@
-ALTER TABLE todos ADD COLUMN description TEXT NOT NULL DEFAULT '';
-ALTER TABLE todos ADD COLUMN deadline TEXT;
