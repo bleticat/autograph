@@ -1,6 +1,4 @@
 pub mod adapters;
-pub mod database;
 pub mod error;
-pub mod parsing;
-pub mod repository;
-pub mod unit_of_work;
+pub mod ports;
+pub mod utils;

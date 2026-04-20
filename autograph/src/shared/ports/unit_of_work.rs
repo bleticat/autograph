@@ -2,7 +2,7 @@ use crate::card::entity::Card;
 use crate::event::entity::Event;
 use crate::project::entity::Project;
 use crate::shared::error::AppErr;
-use crate::shared::repository::Repository;
+use crate::shared::ports::repository::Repository;
 use std::future::Future;
 
 pub trait UnitOfWork: Send {

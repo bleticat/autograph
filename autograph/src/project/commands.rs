@@ -1,7 +1,7 @@
 use crate::project::entity::Project;
 use crate::shared::error::AppErr;
-use crate::shared::repository::Repository;
-use crate::shared::unit_of_work::UnitOfWork;
+use crate::shared::ports::repository::Repository;
+use crate::shared::ports::unit_of_work::UnitOfWork;
 use uuid::Uuid;
 
 pub struct ProjectCommands<'a, U: UnitOfWork> {

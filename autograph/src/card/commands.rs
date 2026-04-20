@@ -1,7 +1,7 @@
 use crate::card::entity::Card;
 use crate::shared::error::AppErr;
-use crate::shared::repository::Repository;
-use crate::shared::unit_of_work::UnitOfWork;
+use crate::shared::ports::repository::Repository;
+use crate::shared::ports::unit_of_work::UnitOfWork;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
