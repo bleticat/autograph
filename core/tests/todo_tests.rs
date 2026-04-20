@@ -1,4 +1,7 @@
-use autograph_core::{Database, SqlxDatabase, SqlxTaskQueries, TaskCommands, TaskQueries};
+use autograph_core::{
+    Database, SqlxDatabase, SqlxTaskQueries, SqlxUnitOfWork, TaskCommands, TaskQueries, Todo,
+};
+use autograph_core::shared::ports::repository::Repository;
 use time::{Date, Month, Time};
 use uuid::Uuid;
 
@@ -274,4 +277,39 @@ async fn full_workflow() {
     assert_eq!(todos[1].description, "");
     assert_eq!(todos[1].deadline, None);
     assert!(todos[1].completed);
+}
+
+#[tokio::test]
+async fn repository_trait_methods_use_unit_of_work() {
+    let db = fresh_db().await;
+
+    db.begin(async |uow| {
+        let todo = <SqlxUnitOfWork as Repository<Todo>>::save(
+            uow,
+            Todo {
+                id: Uuid::nil(),
+                title: "trait-backed".to_owned(),
+                description: String::new(),
+                deadline: None,
+                completed: false,
+                project_id: None,
+            },
+        )
+        .await?;
+
+        let fetched = <SqlxUnitOfWork as Repository<Todo>>::get(uow, todo.id).await?;
+        assert_eq!(fetched.as_ref().map(|item| item.id), Some(todo.id));
+
+        <SqlxUnitOfWork as Repository<Todo>>::delete(uow, todo.id).await?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+
+    assert!(
+        (SqlxTaskQueries::new(db.conn()).get_all_todos())
+            .await
+            .unwrap()
+            .is_empty()
+    );
 }

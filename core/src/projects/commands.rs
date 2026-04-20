@@ -14,12 +14,13 @@ impl<'a, U: UnitOfWork> ProjectCommands<'a, U> {
     }
 
     pub async fn add(&mut self, title: &str) -> Result<Project, AppErr> {
-        self.uow
-            .projects()
-            .save(Project {
+        <U as Repository<Project>>::save(
+            self.uow,
+            Project {
                 id: Uuid::nil(),
                 title: title.to_owned(),
-            })
-            .await
+            },
+        )
+        .await
     }
 }

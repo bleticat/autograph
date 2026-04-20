@@ -1,26 +1,18 @@
 use crate::events::Event;
+use crate::shared::adapters::database::sqlx_unit_of_work::SqlxUnitOfWork;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqlxEventRepository<'a> {
-    tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>,
-}
-
-impl<'a> SqlxEventRepository<'a> {
-    pub fn new(tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
-        Self { tx }
-    }
-}
-
-impl<'a> Repository<Event> for SqlxEventRepository<'a> {
+impl Repository<Event> for SqlxUnitOfWork {
     async fn get(&mut self, id: Uuid) -> Result<Option<Event>, AppErr> {
+        let tx = self.tx();
         let row = sqlx::query(
             "SELECT id, date, title, description, project_id FROM events WHERE id = ?1",
         )
         .bind(id)
-        .fetch_optional(&mut **self.tx)
+        .fetch_optional(&mut **tx)
         .await?;
         Ok(row.map(|row| Event {
             id: row.get(0),
@@ -34,6 +26,7 @@ impl<'a> Repository<Event> for SqlxEventRepository<'a> {
     async fn save(&mut self, event: Event) -> Result<Event, AppErr> {
         if event.id.is_nil() {
             let id = Uuid::new_v4();
+            let tx = self.tx();
             sqlx::query(
                 "INSERT INTO events (id, date, title, description, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
             )
@@ -42,10 +35,11 @@ impl<'a> Repository<Event> for SqlxEventRepository<'a> {
             .bind(&event.title)
             .bind(&event.description)
             .bind(event.project_id)
-            .execute(&mut **self.tx)
+            .execute(&mut **tx)
             .await?;
             Ok(Event { id, ..event })
         } else {
+            let tx = self.tx();
             let updated = sqlx::query(
                 "UPDATE events SET date = ?1, title = ?2, description = ?3, project_id = ?4 WHERE id = ?5",
             )
@@ -54,7 +48,7 @@ impl<'a> Repository<Event> for SqlxEventRepository<'a> {
             .bind(&event.description)
             .bind(event.project_id)
             .bind(event.id)
-            .execute(&mut **self.tx)
+            .execute(&mut **tx)
             .await?
             .rows_affected();
             if updated == 0 {
@@ -65,9 +59,10 @@ impl<'a> Repository<Event> for SqlxEventRepository<'a> {
     }
 
     async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
+        let tx = self.tx();
         sqlx::query("DELETE FROM events WHERE id = ?1")
             .bind(id)
-            .execute(&mut **self.tx)
+            .execute(&mut **tx)
             .await?;
         Ok(())
     }

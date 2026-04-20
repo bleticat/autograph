@@ -20,16 +20,17 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         title: &str,
         description: &str,
     ) -> Result<Event, AppErr> {
-        self.uow
-            .events()
-            .save(Event {
+        <U as Repository<Event>>::save(
+            self.uow,
+            Event {
                 id: Uuid::nil(),
                 date,
                 title: title.to_owned(),
                 description: description.to_owned(),
                 project_id: None,
-            })
-            .await
+            },
+        )
+        .await
     }
 
     pub async fn add_with_project(
@@ -39,16 +40,17 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         description: &str,
         project_id: Uuid,
     ) -> Result<Event, AppErr> {
-        self.uow
-            .events()
-            .save(Event {
+        <U as Repository<Event>>::save(
+            self.uow,
+            Event {
                 id: Uuid::nil(),
                 date,
                 title: title.to_owned(),
                 description: description.to_owned(),
                 project_id: Some(project_id),
-            })
-            .await
+            },
+        )
+        .await
     }
 
     pub async fn edit(
@@ -58,12 +60,12 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         title: &str,
         description: &str,
     ) -> Result<(), AppErr> {
-        let event = self.uow.events().get(id).await?;
+        let event = <U as Repository<Event>>::get(self.uow, id).await?;
         if let Some(mut event) = event {
             event.date = date;
             event.title = title.to_owned();
             event.description = description.to_owned();
-            self.uow.events().save(event).await?;
+            <U as Repository<Event>>::save(self.uow, event).await?;
         }
         Ok(())
     }
