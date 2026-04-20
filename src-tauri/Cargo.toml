@@ -12,6 +12,7 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 autograph-core = { path = "../core" }
 time = { version = "0.3.47", features = ["parsing", "formatting"] }
+uuid = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -1,5 +1,5 @@
 use autograph_core::{
-    Database, EventCommands, ProjectCommands, SqlxDatabase, SqlxEventQueries,
+    Database, EventCommands, EventQueries, ProjectCommands, SqlxDatabase, SqlxEventQueries,
 };
 use time::{Date, Month, Time};
 

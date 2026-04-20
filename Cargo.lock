@@ -117,6 +117,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "time",
+ "uuid",
 ]
 
 [[package]]
