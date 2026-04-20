@@ -1,26 +1,22 @@
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
+use crate::shared::ports::unit_of_work::UnitOfWork;
 use crate::tasks::Todo;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub struct SqlxTodoRepository<'a> {
-    tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>,
-}
+impl Repository for Todo {
+    type Tx = sqlx::Transaction<'static, sqlx::Sqlite>;
 
-impl<'a> SqlxTodoRepository<'a> {
-    pub fn new(tx: &'a mut sqlx::Transaction<'static, sqlx::Sqlite>) -> Self {
-        Self { tx }
-    }
-}
-
-impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
-    async fn get(&mut self, id: Uuid) -> Result<Option<Todo>, AppErr> {
+    async fn get<U>(uow: &mut U, id: Uuid) -> Result<Option<Todo>, AppErr>
+    where
+        U: UnitOfWork<Tx = Self::Tx>,
+    {
         let row = sqlx::query(
             "SELECT id, title, description, deadline, completed, project_id FROM todos WHERE id = ?1",
         )
             .bind(id)
-            .fetch_optional(&mut **self.tx)
+            .fetch_optional(&mut **uow.tx())
             .await?;
         Ok(row.map(|row| Todo {
             id: row.get(0),
@@ -32,7 +28,11 @@ impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
         }))
     }
 
-    async fn save(&mut self, todo: Todo) -> Result<Todo, AppErr> {
+    async fn save<U>(self, uow: &mut U) -> Result<Todo, AppErr>
+    where
+        U: UnitOfWork<Tx = Self::Tx>,
+    {
+        let todo = self;
         if todo.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
@@ -44,7 +44,7 @@ impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
             .bind(&todo.deadline)
             .bind(todo.completed)
             .bind(todo.project_id)
-            .execute(&mut **self.tx)
+            .execute(&mut **uow.tx())
             .await?;
             Ok(Todo { id, ..todo })
         } else {
@@ -57,7 +57,7 @@ impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
             .bind(todo.completed)
             .bind(todo.project_id)
             .bind(todo.id)
-            .execute(&mut **self.tx)
+            .execute(&mut **uow.tx())
             .await?
             .rows_affected();
             if updated == 0 {
@@ -67,10 +67,13 @@ impl<'a> Repository<Todo> for SqlxTodoRepository<'a> {
         }
     }
 
-    async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
+    async fn delete<U>(uow: &mut U, id: Uuid) -> Result<(), AppErr>
+    where
+        U: UnitOfWork<Tx = Self::Tx>,
+    {
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
-            .execute(&mut **self.tx)
+            .execute(&mut **uow.tx())
             .await?;
         Ok(())
     }

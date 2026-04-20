@@ -15,6 +15,7 @@ pub use shared::adapters::database::sqlx_database::SqlxDatabase;
 pub use shared::adapters::database::sqlx_unit_of_work::SqlxUnitOfWork;
 pub use shared::error::AppErr;
 pub use shared::ports::database::Database;
+pub use shared::ports::repository::Repository;
 pub use shared::ports::unit_of_work::UnitOfWork;
 pub use tasks::Todo;
 pub use tasks::adapters::sqlx_task_queries::SqlxTaskQueries;

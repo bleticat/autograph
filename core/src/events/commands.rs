@@ -5,11 +5,11 @@ use crate::shared::ports::unit_of_work::UnitOfWork;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct EventCommands<'a, U: UnitOfWork> {
+pub struct EventCommands<'a, U: UnitOfWork<Tx = sqlx::Transaction<'static, sqlx::Sqlite>>> {
     uow: &'a mut U,
 }
 
-impl<'a, U: UnitOfWork> EventCommands<'a, U> {
+impl<'a, U: UnitOfWork<Tx = sqlx::Transaction<'static, sqlx::Sqlite>>> EventCommands<'a, U> {
     pub fn new(uow: &'a mut U) -> Self {
         Self { uow }
     }
@@ -20,16 +20,15 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         title: &str,
         description: &str,
     ) -> Result<Event, AppErr> {
-        self.uow
-            .events()
-            .save(Event {
-                id: Uuid::nil(),
-                date,
-                title: title.to_owned(),
-                description: description.to_owned(),
-                project_id: None,
-            })
-            .await
+        Event {
+            id: Uuid::nil(),
+            date,
+            title: title.to_owned(),
+            description: description.to_owned(),
+            project_id: None,
+        }
+        .save(self.uow)
+        .await
     }
 
     pub async fn add_with_project(
@@ -39,16 +38,15 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         description: &str,
         project_id: Uuid,
     ) -> Result<Event, AppErr> {
-        self.uow
-            .events()
-            .save(Event {
-                id: Uuid::nil(),
-                date,
-                title: title.to_owned(),
-                description: description.to_owned(),
-                project_id: Some(project_id),
-            })
-            .await
+        Event {
+            id: Uuid::nil(),
+            date,
+            title: title.to_owned(),
+            description: description.to_owned(),
+            project_id: Some(project_id),
+        }
+        .save(self.uow)
+        .await
     }
 
     pub async fn edit(
@@ -58,12 +56,12 @@ impl<'a, U: UnitOfWork> EventCommands<'a, U> {
         title: &str,
         description: &str,
     ) -> Result<(), AppErr> {
-        let event = self.uow.events().get(id).await?;
+        let event = Event::get(self.uow, id).await?;
         if let Some(mut event) = event {
             event.date = date;
             event.title = title.to_owned();
             event.description = description.to_owned();
-            self.uow.events().save(event).await?;
+            event.save(self.uow).await?;
         }
         Ok(())
     }

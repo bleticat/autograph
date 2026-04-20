@@ -1,4 +1,6 @@
-use autograph_core::{Database, SqlxDatabase, SqlxTaskQueries, TaskCommands, TaskQueries};
+use autograph_core::{
+    Database, Repository, SqlxDatabase, SqlxTaskQueries, TaskCommands, TaskQueries, Todo,
+};
 use time::{Date, Month, Time};
 use uuid::Uuid;
 
@@ -33,6 +35,42 @@ async fn add_single_todo() {
     assert_eq!(todos[0].description, "");
     assert_eq!(todos[0].deadline, None);
     assert!(!todos[0].completed);
+}
+
+#[tokio::test]
+async fn entity_repository_trait_supports_todo_crud() {
+    let db = fresh_db().await;
+    let saved = db
+        .begin(async |uow| {
+            Todo {
+                id: Uuid::nil(),
+                title: "trait todo".to_owned(),
+                description: "from entity trait".to_owned(),
+                deadline: None,
+                completed: false,
+                project_id: None,
+            }
+            .save(uow)
+            .await
+        })
+        .await
+        .unwrap();
+
+    let loaded = db
+        .begin(async |uow| Todo::get(uow, saved.id).await)
+        .await
+        .unwrap()
+        .expect("todo should exist after save");
+    assert_eq!(loaded.title, "trait todo");
+    assert_eq!(loaded.description, "from entity trait");
+
+    db.begin(async |uow| Todo::delete(uow, saved.id).await)
+        .await
+        .unwrap();
+    let todos = (SqlxTaskQueries::new(db.conn()).get_all_todos())
+        .await
+        .unwrap();
+    assert!(todos.is_empty());
 }
 
 #[tokio::test]

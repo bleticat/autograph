@@ -5,27 +5,26 @@ use crate::tasks::Todo;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct TaskCommands<'a, U: UnitOfWork> {
+pub struct TaskCommands<'a, U: UnitOfWork<Tx = sqlx::Transaction<'static, sqlx::Sqlite>>> {
     uow: &'a mut U,
 }
 
-impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
+impl<'a, U: UnitOfWork<Tx = sqlx::Transaction<'static, sqlx::Sqlite>>> TaskCommands<'a, U> {
     pub fn new(uow: &'a mut U) -> Self {
         Self { uow }
     }
 
     pub async fn add(&mut self, title: &str) -> Result<Todo, AppErr> {
-        self.uow
-            .tasks()
-            .save(Todo {
-                id: Uuid::nil(),
-                title: title.to_owned(),
-                description: String::new(),
-                deadline: None,
-                completed: false,
-                project_id: None,
-            })
-            .await
+        Todo {
+            id: Uuid::nil(),
+            title: title.to_owned(),
+            description: String::new(),
+            deadline: None,
+            completed: false,
+            project_id: None,
+        }
+        .save(self.uow)
+        .await
     }
 
     pub async fn add_with_project(
@@ -33,17 +32,16 @@ impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
         title: &str,
         project_id: Uuid,
     ) -> Result<Todo, AppErr> {
-        self.uow
-            .tasks()
-            .save(Todo {
-                id: Uuid::nil(),
-                title: title.to_owned(),
-                description: String::new(),
-                deadline: None,
-                completed: false,
-                project_id: Some(project_id),
-            })
-            .await
+        Todo {
+            id: Uuid::nil(),
+            title: title.to_owned(),
+            description: String::new(),
+            deadline: None,
+            completed: false,
+            project_id: Some(project_id),
+        }
+        .save(self.uow)
+        .await
     }
 
     pub async fn edit(
@@ -53,26 +51,26 @@ impl<'a, U: UnitOfWork> TaskCommands<'a, U> {
         description: &str,
         deadline: Option<OffsetDateTime>,
     ) -> Result<(), AppErr> {
-        let todo = self.uow.tasks().get(id).await?;
+        let todo = Todo::get(self.uow, id).await?;
         if let Some(mut todo) = todo {
             todo.title = title.to_owned();
             todo.description = description.to_owned();
             todo.deadline = deadline;
-            self.uow.tasks().save(todo).await?;
+            todo.save(self.uow).await?;
         }
         Ok(())
     }
 
     pub async fn toggle(&mut self, id: Uuid) -> Result<(), AppErr> {
-        let todo = self.uow.tasks().get(id).await?;
+        let todo = Todo::get(self.uow, id).await?;
         if let Some(mut todo) = todo {
             todo.completed = !todo.completed;
-            self.uow.tasks().save(todo).await?;
+            todo.save(self.uow).await?;
         }
         Ok(())
     }
 
     pub async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
-        self.uow.tasks().delete(id).await
+        Todo::delete(self.uow, id).await
     }
 }
