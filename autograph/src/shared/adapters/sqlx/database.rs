@@ -1,5 +1,5 @@
 use super::unit_of_work::SqlxUnitOfWork;
-use crate::shared::database::Database;
+use crate::shared::database::{Database, DatabaseBuilder};
 use crate::shared::error::AppErr;
 use crate::shared::unit_of_work::UnitOfWork;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -11,26 +11,34 @@ pub struct SqlxDatabase {
     pool: SqlxConnection,
 }
 
-impl SqlxDatabase {
-    pub async fn migrate(&self) -> Result<(), AppErr> {
-        sqlx::migrate!("./src/shared/adapters/sqlx/migrations")
-            .run(&self.pool)
-            .await?;
-        Ok(())
-    }
+pub struct SqlxDatabaseBuilder {
+    path: String,
+    run_migrations: bool,
 }
 
-impl Database for SqlxDatabase {
-    type Conn = SqlxConnection;
-    type Uow = SqlxUnitOfWork;
+impl DatabaseBuilder for SqlxDatabaseBuilder {
+    type Db = SqlxDatabase;
 
-    async fn open(path: &str) -> Result<Self, AppErr> {
-        let path = path.to_owned();
-        let is_memory = path == ":memory:";
+    fn open(path: &str) -> Self {
+        Self {
+            path: path.to_owned(),
+            run_migrations: false,
+        }
+    }
+
+    fn migrate(self) -> Self {
+        Self {
+            run_migrations: true,
+            ..self
+        }
+    }
+
+    async fn finish(self) -> Result<SqlxDatabase, AppErr> {
+        let is_memory = self.path == ":memory:";
         let conn_str = if is_memory {
             "sqlite::memory:".to_owned()
         } else {
-            format!("sqlite://{path}")
+            format!("sqlite://{}", self.path)
         };
 
         let mut conn_options = sqlx::sqlite::SqliteConnectOptions::from_str(&conn_str)?
@@ -47,8 +55,19 @@ impl Database for SqlxDatabase {
             .connect_with(conn_options)
             .await?;
 
-        Ok(Self { pool })
+        if self.run_migrations {
+            sqlx::migrate!("./src/shared/adapters/sqlx/migrations")
+                .run(&pool)
+                .await?;
+        }
+
+        Ok(SqlxDatabase { pool })
     }
+}
+
+impl Database for SqlxDatabase {
+    type Conn = SqlxConnection;
+    type Uow = SqlxUnitOfWork;
 
     fn conn(&self) -> SqlxConnection {
         self.pool.clone()

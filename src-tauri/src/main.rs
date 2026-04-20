@@ -1,14 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph::{
-    AppErr, Card, CardCommands, CardQueries, Database, Event, EventCommands, EventQueries, Project,
-    ProjectCommands, ProjectQueries, SqlxCardQueries, SqlxDatabase, SqlxEventQueries,
-    SqlxProjectQueries, parse_date, parse_optional_date,
+    AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Event, EventCommands,
+    EventQueries, Project, ProjectCommands, ProjectQueries, SqlxCardQueries, SqlxDatabase,
+    SqlxDatabaseBuilder, SqlxEventQueries, SqlxProjectQueries, parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 
 type DatabaseAdapter = SqlxDatabase;
+type DatabaseBuilderAdapter = SqlxDatabaseBuilder;
 type CardQueryAdapter = SqlxCardQueries;
 type EventQueryAdapter = SqlxEventQueries;
 type ProjectQueryAdapter = SqlxProjectQueries;
@@ -236,9 +237,12 @@ async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<V
 }
 
 fn main() {
-    let db =
-        block_on(DatabaseAdapter::open("../db.sqlite")).expect("Failed to initialize database");
-    block_on(db.migrate()).expect("Failed to migrate database");
+    let db = block_on(
+        DatabaseBuilderAdapter::open("../db.sqlite")
+            .migrate()
+            .finish(),
+    )
+    .expect("Failed to initialize database");
 
     tauri::Builder::default()
         .manage(AppState { db })

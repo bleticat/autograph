@@ -1,14 +1,14 @@
 use autograph::{
-    Database, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxProjectQueries, SqlxCardQueries,
-    CardCommands, CardQueries,
+    Database, DatabaseBuilder, ProjectCommands, ProjectQueries, SqlxDatabase, SqlxDatabaseBuilder,
+    SqlxProjectQueries, SqlxCardQueries, CardCommands, CardQueries,
 };
 
 async fn fresh_db() -> SqlxDatabase {
-    let db = (SqlxDatabase::open(":memory:"))
+    SqlxDatabaseBuilder::open(":memory:")
+        .migrate()
+        .finish()
         .await
-        .expect("failed to create in-memory db");
-    (db.migrate()).await.expect("failed to run migrations");
-    db
+        .expect("failed to setup in-memory db")
 }
 
 #[tokio::test]
