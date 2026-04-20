@@ -1,6 +1,6 @@
-use crate::card::adapters::sqlx_repo::SqlxCardRepository;
-use crate::event::adapters::sqlx_repo::SqlxEventRepository;
-use crate::project::adapters::sqlx_repo::SqlxProjectRepository;
+use crate::card::adapters::sqlx::repository::SqlxCardRepository;
+use crate::event::adapters::sqlx::repository::SqlxEventRepository;
+use crate::project::adapters::sqlx::repository::SqlxProjectRepository;
 use crate::shared::error::AppErr;
 use crate::shared::ports::unit_of_work::UnitOfWork;
 
