@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.autograph.app",
   "build": {
-    "beforeBuildCommand": "cd ../frontend && npm run build",
-    "beforeDevCommand": "cd ../frontend && npm run dev",
-    "frontendDist": "../frontend/dist",
+    "beforeBuildCommand": "cd ../ui && npm run build",
+    "beforeDevCommand": "cd ../ui && npm run dev",
+    "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:1420"
   },
   "app": {

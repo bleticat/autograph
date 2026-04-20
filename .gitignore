@@ -1,7 +1,7 @@
 /target
 /dist
 /**/dist
-frontend/node_modules
+ui/node_modules
 .DS_Store
 db.sqlite*
 .vscode
