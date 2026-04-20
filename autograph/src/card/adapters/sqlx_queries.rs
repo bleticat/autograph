@@ -1,6 +1,6 @@
-use crate::card::Card;
+use crate::card::entity::Card;
 use crate::card::queries::CardQueries;
-use crate::shared::adapters::database::sqlx_database::SqlxConnection;
+use crate::shared::adapters::sqlx::database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
 use uuid::Uuid;

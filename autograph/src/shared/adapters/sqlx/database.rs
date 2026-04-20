@@ -1,4 +1,4 @@
-use super::sqlx_unit_of_work::SqlxUnitOfWork;
+use super::unit_of_work::SqlxUnitOfWork;
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use crate::shared::ports::unit_of_work::UnitOfWork;
@@ -13,7 +13,7 @@ pub struct SqlxDatabase {
 
 impl SqlxDatabase {
     pub async fn migrate(&self) -> Result<(), AppErr> {
-        sqlx::migrate!("./src/shared/adapters/database/migrations")
+        sqlx::migrate!("./src/shared/adapters/sqlx/migrations")
             .run(&self.pool)
             .await?;
         Ok(())

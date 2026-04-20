@@ -1,8 +1,8 @@
-use crate::event::Event;
-use crate::project::Project;
+use crate::card::entity::Card;
+use crate::event::entity::Event;
+use crate::project::entity::Project;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
-use crate::card::Card;
 use std::future::Future;
 
 pub trait UnitOfWork: Send {

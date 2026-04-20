@@ -1,4 +1,4 @@
-use crate::project::Project;
+use crate::project::entity::Project;
 use crate::shared::error::AppErr;
 use std::future::Future;
 

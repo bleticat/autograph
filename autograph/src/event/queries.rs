@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::event::entity::Event;
 use crate::shared::error::AppErr;
 use std::future::Future;
 use uuid::Uuid;

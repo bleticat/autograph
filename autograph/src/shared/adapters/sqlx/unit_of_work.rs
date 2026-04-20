@@ -1,8 +1,8 @@
+use crate::card::adapters::sqlx_repo::SqlxCardRepository;
 use crate::event::adapters::sqlx_repo::SqlxEventRepository;
 use crate::project::adapters::sqlx_repo::SqlxProjectRepository;
 use crate::shared::error::AppErr;
 use crate::shared::ports::unit_of_work::UnitOfWork;
-use crate::card::adapters::sqlx_repo::SqlxCardRepository;
 
 pub struct SqlxUnitOfWork {
     tx: sqlx::Transaction<'static, sqlx::Sqlite>,

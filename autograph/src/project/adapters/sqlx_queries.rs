@@ -1,6 +1,6 @@
-use crate::project::Project;
+use crate::project::entity::Project;
 use crate::project::queries::ProjectQueries;
-use crate::shared::adapters::database::sqlx_database::SqlxConnection;
+use crate::shared::adapters::sqlx::database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
 

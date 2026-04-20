@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::event::entity::Event;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sqlx::Row;

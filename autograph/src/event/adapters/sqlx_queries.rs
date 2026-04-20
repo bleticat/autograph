@@ -1,6 +1,6 @@
-use crate::event::Event;
+use crate::event::entity::Event;
 use crate::event::queries::EventQueries;
-use crate::shared::adapters::database::sqlx_database::SqlxConnection;
+use crate::shared::adapters::sqlx::database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
 use uuid::Uuid;
