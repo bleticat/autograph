@@ -1,2 +1,2 @@
-pub mod sqlx_event_queries;
-pub mod sqlx_event_repo;
+pub mod sqlx_queries;
+pub mod sqlx_repo;

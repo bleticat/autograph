@@ -1,1 +1,1 @@
-pub mod card_queries;
+pub mod queries;

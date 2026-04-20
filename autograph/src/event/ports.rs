@@ -1,1 +1,1 @@
-pub mod event_queries;
+pub mod queries;
