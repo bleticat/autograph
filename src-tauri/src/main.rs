@@ -92,7 +92,7 @@ fn run_python_sidecar() -> TauriResult<String> {
 
     let output = Command::new(sidecar)
         .output()
-        .map_err(|err| TauriErr(format!("Failed to run python sidecar: {err}")))?;
+        .map_err(|err| TauriErr(format!("Failed to run Python sidecar: {err}")))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
