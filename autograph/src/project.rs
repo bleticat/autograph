@@ -1,6 +1,6 @@
 pub mod adapters;
 pub mod commands;
 pub mod entity;
-pub mod ports;
+pub mod queries;
 
 pub use entity::Project;

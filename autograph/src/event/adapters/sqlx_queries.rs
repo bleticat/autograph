@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::event::ports::queries::EventQueries;
+use crate::event::queries::EventQueries;
 use crate::shared::adapters::database::sqlx_database::SqlxConnection;
 use crate::shared::error::AppErr;
 use sqlx::Row;
