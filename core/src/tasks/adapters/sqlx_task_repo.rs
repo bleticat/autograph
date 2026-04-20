@@ -32,38 +32,37 @@ impl Repository for Todo {
     where
         U: UnitOfWork<Tx = Self::Tx>,
     {
-        let todo = self;
-        if todo.id.is_nil() {
+        if self.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
                 "INSERT INTO todos (id, title, description, deadline, completed, project_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             )
             .bind(id)
-            .bind(&todo.title)
-            .bind(&todo.description)
-            .bind(&todo.deadline)
-            .bind(todo.completed)
-            .bind(todo.project_id)
+            .bind(&self.title)
+            .bind(&self.description)
+            .bind(&self.deadline)
+            .bind(self.completed)
+            .bind(self.project_id)
             .execute(&mut **uow.tx())
             .await?;
-            Ok(Todo { id, ..todo })
+            Ok(Todo { id, ..self })
         } else {
             let updated = sqlx::query(
                 "UPDATE todos SET title = ?1, description = ?2, deadline = ?3, completed = ?4, project_id = ?5 WHERE id = ?6",
             )
-            .bind(&todo.title)
-            .bind(&todo.description)
-            .bind(&todo.deadline)
-            .bind(todo.completed)
-            .bind(todo.project_id)
-            .bind(todo.id)
+            .bind(&self.title)
+            .bind(&self.description)
+            .bind(&self.deadline)
+            .bind(self.completed)
+            .bind(self.project_id)
+            .bind(self.id)
             .execute(&mut **uow.tx())
             .await?
             .rows_affected();
             if updated == 0 {
                 return Err(sqlx::Error::RowNotFound.into());
             }
-            Ok(todo)
+            Ok(self)
         }
     }
 

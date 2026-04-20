@@ -31,36 +31,35 @@ impl Repository for Event {
     where
         U: UnitOfWork<Tx = Self::Tx>,
     {
-        let event = self;
-        if event.id.is_nil() {
+        if self.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query(
                 "INSERT INTO events (id, date, title, description, project_id) VALUES (?1, ?2, ?3, ?4, ?5)",
             )
             .bind(id)
-            .bind(event.date)
-            .bind(&event.title)
-            .bind(&event.description)
-            .bind(event.project_id)
+            .bind(self.date)
+            .bind(&self.title)
+            .bind(&self.description)
+            .bind(self.project_id)
             .execute(&mut **uow.tx())
             .await?;
-            Ok(Event { id, ..event })
+            Ok(Event { id, ..self })
         } else {
             let updated = sqlx::query(
                 "UPDATE events SET date = ?1, title = ?2, description = ?3, project_id = ?4 WHERE id = ?5",
             )
-            .bind(event.date)
-            .bind(&event.title)
-            .bind(&event.description)
-            .bind(event.project_id)
-            .bind(event.id)
+            .bind(self.date)
+            .bind(&self.title)
+            .bind(&self.description)
+            .bind(self.project_id)
+            .bind(self.id)
             .execute(&mut **uow.tx())
             .await?
             .rows_affected();
             if updated == 0 {
                 return Err(sqlx::Error::RowNotFound.into());
             }
-            Ok(event)
+            Ok(self)
         }
     }
 

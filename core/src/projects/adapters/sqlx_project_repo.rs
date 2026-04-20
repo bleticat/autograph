@@ -26,22 +26,21 @@ impl Repository for Project {
     where
         U: UnitOfWork<Tx = Self::Tx>,
     {
-        let project = self;
-        if project.id.is_nil() {
+        if self.id.is_nil() {
             let id = Uuid::new_v4();
             sqlx::query("INSERT INTO projects (id, title) VALUES (?1, ?2)")
                 .bind(id)
-                .bind(project.title.as_str())
+                .bind(self.title.as_str())
                 .execute(&mut **uow.tx())
                 .await?;
-            Ok(Project { id, ..project })
+            Ok(Project { id, ..self })
         } else {
             sqlx::query("UPDATE projects SET title = ?1 WHERE id = ?2")
-                .bind(project.title.as_str())
-                .bind(project.id)
+                .bind(self.title.as_str())
+                .bind(self.id)
                 .execute(&mut **uow.tx())
                 .await?;
-            Ok(project)
+            Ok(self)
         }
     }
 
