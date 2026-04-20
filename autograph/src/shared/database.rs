@@ -1,5 +1,5 @@
 use crate::shared::error::AppErr;
-use crate::shared::ports::unit_of_work::UnitOfWork;
+use crate::shared::unit_of_work::UnitOfWork;
 use std::future::Future;
 
 pub trait Database: Sync {

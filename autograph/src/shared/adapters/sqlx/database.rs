@@ -1,7 +1,7 @@
 use super::unit_of_work::SqlxUnitOfWork;
+use crate::shared::database::Database;
 use crate::shared::error::AppErr;
-use crate::shared::ports::database::Database;
-use crate::shared::ports::unit_of_work::UnitOfWork;
+use crate::shared::unit_of_work::UnitOfWork;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::str::FromStr;
 

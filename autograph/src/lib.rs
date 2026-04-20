@@ -17,6 +17,6 @@ pub use project::entity::Project;
 pub use project::queries::ProjectQueries;
 pub use shared::adapters::sqlx::database::SqlxDatabase;
 pub use shared::adapters::sqlx::unit_of_work::SqlxUnitOfWork;
+pub use shared::database::Database;
 pub use shared::error::AppErr;
-pub use shared::ports::database::Database;
-pub use shared::ports::unit_of_work::UnitOfWork;
+pub use shared::unit_of_work::UnitOfWork;

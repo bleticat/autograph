@@ -1,6 +1,6 @@
 use crate::event::entity::Event;
 use crate::shared::error::AppErr;
-use crate::shared::ports::repository::Repository;
+use crate::shared::repository::Repository;
 use sqlx::Row;
 use uuid::Uuid;
 
