@@ -2,7 +2,7 @@ use crate::card::entity::Card;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 pub struct CardCommands<'a, U: UnitOfWork> {
@@ -51,7 +51,7 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
         id: Uuid,
         title: &str,
         description: &str,
-        deadline: Option<OffsetDateTime>,
+        deadline: Option<DateTime<Utc>>,
     ) -> Result<(), AppErr> {
         let card = self.uow.card().get(id).await?;
         if let Some(mut card) = card {
