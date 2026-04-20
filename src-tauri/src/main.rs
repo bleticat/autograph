@@ -1,13 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph::{
-    AppErr, Database, Event, EventCommands, EventQueries, Project, ProjectCommands, ProjectQueries,
-    SqlxDatabase, SqlxEventQueries, SqlxProjectQueries, SqlxCardQueries, CardCommands, CardQueries,
-    Card,
+    AppErr, Card, CardCommands, CardQueries, Database, Event, EventCommands, EventQueries, Project,
+    ProjectCommands, ProjectQueries, SqlxCardQueries, SqlxDatabase, SqlxEventQueries,
+    SqlxProjectQueries, parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
-use time::{Date, OffsetDateTime, Time, format_description::well_known::Iso8601};
 
 type DatabaseAdapter = SqlxDatabase;
 type CardQueryAdapter = SqlxCardQueries;
@@ -32,38 +31,6 @@ fn parse_uuid(value: &str, field: &str) -> TauriResult<uuid::Uuid> {
 
 fn parse_optional_uuid(value: Option<String>, field: &str) -> TauriResult<Option<uuid::Uuid>> {
     value.as_deref().map(|id| parse_uuid(id, field)).transpose()
-}
-
-fn parse_deadline(deadline: Option<String>) -> TauriResult<Option<OffsetDateTime>> {
-    let Some(deadline) = deadline.map(|d| d.trim().to_owned()) else {
-        return Ok(None);
-    };
-    if deadline.is_empty() {
-        return Ok(None);
-    }
-
-    let date = Date::parse(&deadline, &Iso8601::DEFAULT).map_err(|err| {
-        TauriErr(format!(
-            "Invalid deadline date format, expected YYYY-MM-DD: {err}"
-        ))
-    })?;
-
-    Ok(Some(date.with_time(Time::MIDNIGHT).assume_utc()))
-}
-
-fn parse_event_date(date: String) -> TauriResult<OffsetDateTime> {
-    let date = date.trim();
-    if date.is_empty() {
-        return Err(TauriErr("Event date is required".to_owned()));
-    }
-
-    let date = Date::parse(date, &Iso8601::DEFAULT).map_err(|err| {
-        TauriErr(format!(
-            "Invalid event date format, expected YYYY-MM-DD: {err}"
-        ))
-    })?;
-
-    Ok(date.with_time(Time::MIDNIGHT).assume_utc())
 }
 
 struct AppState {
@@ -154,7 +121,7 @@ async fn update_card(
     state: State<'_, AppState>,
 ) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
-    let deadline = parse_deadline(deadline)?;
+    let deadline = parse_optional_date(deadline.as_deref())?;
     state
         .db
         .begin(async |uow| {
@@ -199,7 +166,7 @@ async fn add_event(
     project_id: Option<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Event>> {
-    let date = parse_event_date(date)?;
+    let date = parse_date(&date)?;
     let project_id = parse_optional_uuid(project_id, "project_id")?;
 
     state
@@ -235,7 +202,7 @@ async fn update_event(
     state: State<'_, AppState>,
 ) -> TauriResult<()> {
     let id = parse_uuid(&id, "event id")?;
-    let date = parse_event_date(date)?;
+    let date = parse_date(&date)?;
     state
         .db
         .begin(async |uow| {
@@ -245,45 +212,6 @@ async fn update_event(
         })
         .await?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{parse_deadline, parse_event_date};
-    use time::{Date, Month};
-
-    #[test]
-    fn parse_deadline_accepts_valid_iso_date() {
-        assert_eq!(
-            parse_deadline(Some("2026-05-10".to_string()))
-                .unwrap()
-                .map(|deadline| deadline.date()),
-            Some(Date::from_calendar_date(2026, Month::May, 10).unwrap())
-        );
-    }
-
-    #[test]
-    fn parse_deadline_normalizes_empty_to_none() {
-        assert_eq!(parse_deadline(Some("   ".to_string())).unwrap(), None);
-    }
-
-    #[test]
-    fn parse_deadline_rejects_invalid_date() {
-        assert!(parse_deadline(Some("2026-13-10".to_string())).is_err());
-    }
-
-    #[test]
-    fn parse_event_date_accepts_valid_iso_date() {
-        assert_eq!(
-            parse_event_date("2026-05-10".to_string()).unwrap().date(),
-            Date::from_calendar_date(2026, Month::May, 10).unwrap()
-        );
-    }
-
-    #[test]
-    fn parse_event_date_rejects_empty_string() {
-        assert!(parse_event_date("   ".to_string()).is_err());
-    }
 }
 
 #[tauri::command]

@@ -4,6 +4,7 @@ use std::fmt;
 pub enum AppErr {
     Db(sqlx::Error),
     Migration(sqlx::migrate::MigrateError),
+    Parse(String),
 }
 
 impl fmt::Display for AppErr {
@@ -11,6 +12,7 @@ impl fmt::Display for AppErr {
         match self {
             AppErr::Db(e) => write!(f, "database error: {e}"),
             AppErr::Migration(e) => write!(f, "migration error: {e}"),
+            AppErr::Parse(e) => write!(f, "parse error: {e}"),
         }
     }
 }
@@ -20,6 +22,7 @@ impl std::error::Error for AppErr {
         match self {
             AppErr::Db(e) => Some(e),
             AppErr::Migration(e) => Some(e),
+            AppErr::Parse(_) => None,
         }
     }
 }
