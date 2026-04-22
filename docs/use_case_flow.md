@@ -4,7 +4,7 @@ This document describes the generic flow used by the application for **commands*
 
 ## Generic command algorithm
 
-Applicable to handlers such as `add_card`, `toggle_card`, `delete_card`, `add_event`, `update_event`, and `add_project`.
+Applicable to handlers such as `add_card`, `toggle_card`, `delete_card`, `add_project`, and `add_section`.
 
 1. UI invokes a Tauri command.
 2. Tauri handler validates/parses inputs.
@@ -35,14 +35,14 @@ sequenceDiagram
     Cmd-->>Tauri: Ok/Err
     Tauri->>UoW: commit()
     UoW-->>Tauri: transaction committed
-    Tauri->>Q: new(conn).get_...() (optional)
+    Tauri->>Q: new(conn).filter(...) / get_project(...) (optional)
     Q-->>Tauri: refreshed data
     Tauri-->>UI: result or TauriErr
 ```
 
 ## Generic query algorithm
 
-Applicable to handlers such as `get_cards`, `get_cards_by_project`, `get_events`, and `get_projects`.
+Applicable to handlers such as `filter_cards`, `get_project`, `filter_projects`, and `filter_sections`.
 
 1. UI invokes a Tauri query command.
 2. Tauri handler validates/parses inputs.
@@ -60,7 +60,7 @@ sequenceDiagram
 
     UI->>Tauri: invoke(query, params)
     Tauri->>Tauri: parse/validate input
-    Tauri->>Q: new(conn).get_...(...)
+    Tauri->>Q: new(conn).filter(...) / get_project(...)
     Q->>DB: SELECT ...
     DB-->>Q: rows
     Q->>Q: map rows -> entities

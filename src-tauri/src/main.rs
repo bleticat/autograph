@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use autograph::{
-    AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Event, EventCommands,
-    EventQueries, Project, ProjectCommands, ProjectQueries, Section, SectionCommands,
-    SectionQueries, SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder, SqlxEventQueries,
-    SqlxProjectQueries, SqlxSectionQueries, parse_date, parse_optional_date,
+    AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Project, ProjectCommands,
+    ProjectData, ProjectQueries, QueryFilter, Section, SectionCommands, SectionQueries,
+    SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder, SqlxProjectQueries, SqlxSectionQueries,
+    parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
@@ -12,7 +12,6 @@ use tauri::{State, async_runtime::block_on};
 type DatabaseAdapter = SqlxDatabase;
 type DatabaseBuilderAdapter = SqlxDatabaseBuilder;
 type CardQueryAdapter = SqlxCardQueries;
-type EventQueryAdapter = SqlxEventQueries;
 type ProjectQueryAdapter = SqlxProjectQueries;
 type SectionQueryAdapter = SqlxSectionQueries;
 type TauriResult<T> = Result<T, TauriErr>;
@@ -41,27 +40,20 @@ struct AppState {
 }
 
 #[tauri::command]
-async fn get_cards(state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
-    Ok(CardQueryAdapter::new(state.db.conn())
-        .get_all_cards()
-        .await?)
-}
-
-#[tauri::command]
-async fn get_cards_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
-    Ok(CardQueryAdapter::new(state.db.conn())
-        .get_cards_without_project()
-        .await?)
-}
-
-#[tauri::command]
-async fn get_cards_by_project(
-    project_id: String,
+async fn filter_cards(
+    limit: u32,
+    offset: u32,
+    deadline: QueryFilter<String>,
+    project_id: QueryFilter<String>,
+    section_id: QueryFilter<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Card>> {
-    let project_id = parse_uuid(&project_id, "project_id")?;
+    let deadline = deadline.try_map(|date| parse_date(&date).map_err(TauriErr::from))?;
+    let project_id = project_id.try_map(|id| parse_uuid(&id, "project_id"))?;
+    let section_id = section_id.try_map(|id| parse_uuid(&id, "section_id"))?;
+
     Ok(CardQueryAdapter::new(state.db.conn())
-        .get_cards_by_project(project_id)
+        .filter(limit, offset, deadline, project_id, section_id)
         .await?)
 }
 
@@ -71,7 +63,7 @@ async fn add_card(
     project_id: Option<String>,
     section_id: Option<String>,
     state: State<'_, AppState>,
-) -> TauriResult<Vec<Card>> {
+) -> TauriResult<()> {
     let project_id = parse_optional_uuid(project_id, "project_id")?;
     let section_id = parse_optional_uuid(section_id, "section_id")?;
     state
@@ -83,33 +75,27 @@ async fn add_card(
             Ok(())
         })
         .await?;
-    Ok(CardQueryAdapter::new(state.db.conn())
-        .get_all_cards()
-        .await?)
+    Ok(())
 }
 
 #[tauri::command]
-async fn toggle_card(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+async fn toggle_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
     state
         .db
         .begin(async |uow| CardCommands::new(uow).toggle(id).await)
         .await?;
-    Ok(CardQueryAdapter::new(state.db.conn())
-        .get_all_cards()
-        .await?)
+    Ok(())
 }
 
 #[tauri::command]
-async fn delete_card(id: String, state: State<'_, AppState>) -> TauriResult<Vec<Card>> {
+async fn delete_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
     state
         .db
         .begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await?;
-    Ok(CardQueryAdapter::new(state.db.conn())
-        .get_all_cards()
-        .await?)
+    Ok(())
 }
 
 #[tauri::command]
@@ -138,95 +124,29 @@ async fn update_card(
 }
 
 #[tauri::command]
-async fn get_events(state: State<'_, AppState>) -> TauriResult<Vec<Event>> {
-    Ok(EventQueryAdapter::new(state.db.conn())
-        .get_all_events()
+async fn filter_projects(
+    limit: u32,
+    offset: u32,
+    state: State<'_, AppState>,
+) -> TauriResult<Vec<Project>> {
+    Ok(ProjectQueryAdapter::new(state.db.conn())
+        .filter(limit, offset)
         .await?)
 }
 
 #[tauri::command]
-async fn get_events_without_project(state: State<'_, AppState>) -> TauriResult<Vec<Event>> {
-    Ok(EventQueryAdapter::new(state.db.conn())
-        .get_events_without_project()
-        .await?)
-}
-
-#[tauri::command]
-async fn get_events_by_project(
+async fn get_project(
     project_id: String,
     state: State<'_, AppState>,
-) -> TauriResult<Vec<Event>> {
+) -> TauriResult<Option<ProjectData>> {
     let project_id = parse_uuid(&project_id, "project_id")?;
-    Ok(EventQueryAdapter::new(state.db.conn())
-        .get_events_by_project(project_id)
-        .await?)
-}
-
-#[tauri::command]
-async fn add_event(
-    date: String,
-    title: String,
-    description: String,
-    project_id: Option<String>,
-    state: State<'_, AppState>,
-) -> TauriResult<Vec<Event>> {
-    let date = parse_date(&date)?;
-    let project_id = parse_optional_uuid(project_id, "project_id")?;
-
-    state
-        .db
-        .begin(async |uow| {
-            match project_id {
-                Some(pid) => {
-                    EventCommands::new(uow)
-                        .add_with_project(date, &title, &description, pid)
-                        .await?;
-                }
-                None => {
-                    EventCommands::new(uow)
-                        .add(date, &title, &description)
-                        .await?;
-                }
-            }
-            Ok(())
-        })
-        .await?;
-
-    Ok(EventQueryAdapter::new(state.db.conn())
-        .get_all_events()
-        .await?)
-}
-
-#[tauri::command]
-async fn update_event(
-    id: String,
-    date: String,
-    title: String,
-    description: String,
-    state: State<'_, AppState>,
-) -> TauriResult<()> {
-    let id = parse_uuid(&id, "event id")?;
-    let date = parse_date(&date)?;
-    state
-        .db
-        .begin(async |uow| {
-            EventCommands::new(uow)
-                .edit(id, date, &title, &description)
-                .await
-        })
-        .await?;
-    Ok(())
-}
-
-#[tauri::command]
-async fn get_projects(state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
     Ok(ProjectQueryAdapter::new(state.db.conn())
-        .get_all_projects()
+        .get_project(project_id)
         .await?)
 }
 
 #[tauri::command]
-async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<Vec<Project>> {
+async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<()> {
     state
         .db
         .begin(async |uow| {
@@ -234,19 +154,20 @@ async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<V
             Ok(())
         })
         .await?;
-    Ok(ProjectQueryAdapter::new(state.db.conn())
-        .get_all_projects()
-        .await?)
+    Ok(())
 }
 
 #[tauri::command]
-async fn get_sections_by_project(
-    project_id: String,
+async fn filter_sections(
+    limit: u32,
+    offset: u32,
+    project_id: QueryFilter<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Section>> {
-    let project_id = parse_uuid(&project_id, "project_id")?;
+    let project_id = project_id.try_map(|id| parse_uuid(&id, "project_id"))?;
+
     Ok(SectionQueryAdapter::new(state.db.conn())
-        .get_sections_by_project(project_id)
+        .filter(limit, offset, project_id)
         .await?)
 }
 
@@ -298,21 +219,15 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState { db })
         .invoke_handler(tauri::generate_handler![
-            get_cards,
-            get_cards_without_project,
-            get_cards_by_project,
+            filter_cards,
             add_card,
             toggle_card,
             delete_card,
             update_card,
-            get_events,
-            get_events_without_project,
-            get_events_by_project,
-            add_event,
-            update_event,
-            get_projects,
+            filter_projects,
+            get_project,
             add_project,
-            get_sections_by_project,
+            filter_sections,
             add_section,
             update_section,
             delete_section,

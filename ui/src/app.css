@@ -110,8 +110,7 @@ select {
 
 .project-input-row,
 .section-input-row,
-.input-row,
-.event-input-row {
+.input-row {
   display: flex;
   gap: 10px;
 }
@@ -119,7 +118,6 @@ select {
 .project-input-row input,
 .section-input-row input,
 .input-row input,
-.event-input-row input,
 .input-row select,
 .edit-page input,
 .edit-page textarea,
@@ -134,8 +132,7 @@ select {
 
 .project-input-row input,
 .section-input-row input,
-.input-row input,
-.event-input-row input:first-child {
+.input-row input {
   flex: 1;
   min-width: 0;
 }
@@ -149,7 +146,6 @@ select {
 .project-input-row input:focus,
 .section-input-row input:focus,
 .input-row input:focus,
-.event-input-row input:focus,
 .input-row select:focus,
 .edit-page input:focus,
 .edit-page textarea:focus,
@@ -172,7 +168,6 @@ button:hover {
 .project-input-row button,
 .section-input-row button,
 .input-row button,
-.event-input-row button,
 .edit-actions button {
   padding: 10px 16px;
   background: var(--accent);
@@ -182,7 +177,6 @@ button:hover {
 .project-input-row button:hover,
 .section-input-row button:hover,
 .input-row button:hover,
-.event-input-row button:hover,
 .edit-actions button:hover {
   background: var(--accent-strong);
 }
@@ -207,26 +201,6 @@ h1 {
   letter-spacing: -0.03em;
 }
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 16px;
-  background: rgba(18, 24, 49, 0.72);
-  border: 1px solid var(--panel-border);
-}
-
-.tabs button {
-  padding: 10px 14px;
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.tabs button.active {
-  background: rgba(111, 130, 211, 0.24);
-  color: white;
-}
-
 .todo-toolbar {
   display: flex;
   flex-direction: column;
@@ -235,7 +209,6 @@ h1 {
 }
 
 .input-row input,
-.event-input-row input,
 .input-row select,
 .edit-page input,
 .edit-page textarea,
@@ -247,22 +220,13 @@ h1 {
   min-width: 170px;
 }
 
-.event-input-row {
-  margin-bottom: 18px;
-}
-
-.event-input-row input[type="date"] {
-  flex: 0 0 160px;
-}
-
 .section-board {
   display: grid;
   gap: 16px;
 }
 
 .todo-group,
-.edit-page,
-.event-list li {
+.edit-page {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 20px;
@@ -305,37 +269,13 @@ h1 {
   font-size: 0.82rem;
 }
 
-.event-list,
 .card-list {
   list-style: none;
 }
-
-.event-list {
-  display: grid;
-  gap: 10px;
-}
-
-.event-list li,
 .card-list li {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.event-list li {
-  justify-content: space-between;
-  padding: 14px 16px;
-}
-
-.event-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.event-date {
-  color: #c8d2ff;
-  font-size: 0.88rem;
 }
 
 .card-list {
@@ -452,18 +392,15 @@ h1 {
   }
 
   .input-row,
-  .event-input-row,
   .section-input-row,
   .project-input-row {
     flex-wrap: wrap;
   }
 
   .input-row button,
-  .event-input-row button,
   .section-input-row button,
   .project-input-row button,
-  .input-row select,
-  .event-input-row input[type="date"] {
+  .input-row select {
     width: 100%;
   }
 }

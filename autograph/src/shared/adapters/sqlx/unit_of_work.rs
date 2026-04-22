@@ -1,5 +1,4 @@
 use crate::card::adapters::sqlx::repository::SqlxCardRepository;
-use crate::event::adapters::sqlx::repository::SqlxEventRepository;
 use crate::project::adapters::sqlx::repository::SqlxProjectRepository;
 use crate::section::adapters::sqlx::repository::SqlxSectionRepository;
 use crate::shared::error::AppErr;
@@ -28,10 +27,6 @@ impl UnitOfWork for SqlxUnitOfWork {
         = SqlxSectionRepository<'a>
     where
         Self: 'a;
-    type EventRepository<'a>
-        = SqlxEventRepository<'a>
-    where
-        Self: 'a;
 
     fn project(&mut self) -> SqlxProjectRepository<'_> {
         SqlxProjectRepository::new(&mut self.tx)
@@ -43,10 +38,6 @@ impl UnitOfWork for SqlxUnitOfWork {
 
     fn section(&mut self) -> SqlxSectionRepository<'_> {
         SqlxSectionRepository::new(&mut self.tx)
-    }
-
-    fn event(&mut self) -> SqlxEventRepository<'_> {
-        SqlxEventRepository::new(&mut self.tx)
     }
 
     async fn commit(self) -> Result<(), AppErr> {

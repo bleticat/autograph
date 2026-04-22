@@ -1,9 +1,11 @@
 use autograph::{
-    CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, SectionCommands,
-    SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder,
+    Card, CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, QueryFilter,
+    SectionCommands, SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder,
 };
 use chrono::NaiveDate;
 use uuid::Uuid;
+
+const DEFAULT_LIMIT: u32 = 100;
 
 async fn fresh_db() -> SqlxDatabase {
     SqlxDatabaseBuilder::open(":memory:")
@@ -13,12 +15,49 @@ async fn fresh_db() -> SqlxDatabase {
         .expect("failed to setup in-memory db")
 }
 
+async fn all_cards(db: &SqlxDatabase) -> Vec<Card> {
+    SqlxCardQueries::new(db.conn())
+        .filter(
+            DEFAULT_LIMIT,
+            0,
+            QueryFilter::Ignore,
+            QueryFilter::Ignore,
+            QueryFilter::Ignore,
+        )
+        .await
+        .unwrap()
+}
+
+async fn cards_by_project(db: &SqlxDatabase, project_id: Uuid) -> Vec<Card> {
+    SqlxCardQueries::new(db.conn())
+        .filter(
+            DEFAULT_LIMIT,
+            0,
+            QueryFilter::Ignore,
+            QueryFilter::Val(project_id),
+            QueryFilter::Ignore,
+        )
+        .await
+        .unwrap()
+}
+
+async fn cards_with_deadline(db: &SqlxDatabase, date: chrono::DateTime<chrono::Utc>) -> Vec<Card> {
+    SqlxCardQueries::new(db.conn())
+        .filter(
+            DEFAULT_LIMIT,
+            0,
+            QueryFilter::Val(date),
+            QueryFilter::Ignore,
+            QueryFilter::Ignore,
+        )
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
 async fn empty_database_returns_no_cards() {
     let db = fresh_db().await;
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert!(cards.is_empty());
 }
 
@@ -28,9 +67,7 @@ async fn add_single_card() {
     db.begin(async |uow| CardCommands::new(uow).add("buy milk").await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].title, "buy milk");
     assert_eq!(cards[0].description, "");
@@ -48,13 +85,34 @@ async fn add_multiple_cards_preserves_order() {
             .await
             .unwrap();
     }
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert_eq!(cards.len(), 3);
     assert_eq!(cards[0].title, "first");
     assert_eq!(cards[1].title, "second");
     assert_eq!(cards[2].title, "third");
+}
+
+#[tokio::test]
+async fn card_filter_respects_limit_and_offset() {
+    let db = fresh_db().await;
+    for title in ["first", "second", "third"] {
+        db.begin(async |uow| CardCommands::new(uow).add(title).await)
+            .await
+            .unwrap();
+    }
+
+    let cards = SqlxCardQueries::new(db.conn())
+        .filter(
+            1,
+            1,
+            QueryFilter::Ignore,
+            QueryFilter::Ignore,
+            QueryFilter::Ignore,
+        )
+        .await
+        .unwrap();
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].title, "second");
 }
 
 #[tokio::test]
@@ -63,17 +121,12 @@ async fn toggle_marks_completed() {
     db.begin(async |uow| CardCommands::new(uow).add("card").await)
         .await
         .unwrap();
-    let id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let id = all_cards(&db).await[0].id;
 
     db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert!(cards[0].completed);
 }
 
@@ -83,10 +136,7 @@ async fn toggle_twice_restores_incomplete() {
     db.begin(async |uow| CardCommands::new(uow).add("card").await)
         .await
         .unwrap();
-    let id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let id = all_cards(&db).await[0].id;
 
     db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
         .await
@@ -94,9 +144,7 @@ async fn toggle_twice_restores_incomplete() {
     db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert!(!cards[0].completed);
 }
 
@@ -106,17 +154,12 @@ async fn delete_removes_card() {
     db.begin(async |uow| CardCommands::new(uow).add("to delete").await)
         .await
         .unwrap();
-    let id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let id = all_cards(&db).await[0].id;
 
     db.begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert!(cards.is_empty());
 }
 
@@ -129,17 +172,13 @@ async fn delete_only_target_card() {
     db.begin(async |uow| CardCommands::new(uow).add("remove").await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     let remove_id = cards[1].id;
 
     db.begin(async |uow| CardCommands::new(uow).delete(remove_id).await)
         .await
         .unwrap();
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].title, "keep");
 }
@@ -150,12 +189,7 @@ async fn toggle_nonexistent_id_is_noop() {
     db.begin(async |uow| CardCommands::new(uow).toggle(Uuid::new_v4()).await)
         .await
         .unwrap();
-    assert!(
-        (SqlxCardQueries::new(db.conn()).get_all_cards())
-            .await
-            .unwrap()
-            .is_empty()
-    );
+    assert!(all_cards(&db).await.is_empty());
 }
 
 #[tokio::test]
@@ -167,13 +201,7 @@ async fn delete_nonexistent_id_is_noop() {
     db.begin(async |uow| CardCommands::new(uow).delete(Uuid::new_v4()).await)
         .await
         .unwrap();
-    assert_eq!(
-        (SqlxCardQueries::new(db.conn()).get_all_cards())
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
+    assert_eq!(all_cards(&db).await.len(), 1);
 }
 
 #[tokio::test]
@@ -182,10 +210,12 @@ async fn edit_updates_card_fields() {
     db.begin(async |uow| CardCommands::new(uow).add("draft").await)
         .await
         .unwrap();
-    let id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let id = all_cards(&db).await[0].id;
+    let deadline = NaiveDate::from_ymd_opt(2026, 5, 10)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
 
     db.begin(async |uow| {
         CardCommands::new(uow)
@@ -193,13 +223,7 @@ async fn edit_updates_card_fields() {
                 id,
                 "final title",
                 "expanded card details",
-                Some(
-                    NaiveDate::from_ymd_opt(2026, 5, 10)
-                        .unwrap()
-                        .and_hms_opt(0, 0, 0)
-                        .unwrap()
-                        .and_utc(),
-                ),
+                Some(deadline),
                 None,
                 None,
             )
@@ -208,17 +232,60 @@ async fn edit_updates_card_fields() {
     .await
     .unwrap();
 
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert_eq!(cards[0].title, "final title");
     assert_eq!(cards[0].description, "expanded card details");
     assert_eq!(
-        cards[0].deadline.map(|deadline| deadline.date_naive()),
+        cards[0]
+            .deadline
+            .map(|saved_deadline| saved_deadline.date_naive()),
         Some(NaiveDate::from_ymd_opt(2026, 5, 10).unwrap())
     );
     assert_eq!(cards[0].project_id, None);
     assert_eq!(cards[0].section_id, None);
+}
+
+#[tokio::test]
+async fn card_filter_can_filter_by_deadline() {
+    let db = fresh_db().await;
+    let matching_deadline = NaiveDate::from_ymd_opt(2026, 5, 10)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
+    let other_deadline = NaiveDate::from_ymd_opt(2026, 5, 11)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
+
+    db.begin(async |uow| CardCommands::new(uow).add("draft").await)
+        .await
+        .unwrap();
+    let id = all_cards(&db).await[0].id;
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .edit(id, "draft", "", Some(matching_deadline), None, None)
+            .await
+    })
+    .await
+    .unwrap();
+
+    db.begin(async |uow| CardCommands::new(uow).add("other").await)
+        .await
+        .unwrap();
+    let other_id = all_cards(&db).await[1].id;
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .edit(other_id, "other", "", Some(other_deadline), None, None)
+            .await
+    })
+    .await
+    .unwrap();
+
+    let cards = cards_with_deadline(&db, matching_deadline).await;
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].title, "draft");
 }
 
 #[tokio::test]
@@ -243,9 +310,7 @@ async fn add_card_with_section_assigns_project_and_section() {
     .await
     .unwrap();
 
-    let cards = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
-        .await
-        .unwrap();
+    let cards = cards_by_project(&db, project_id).await;
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].title, "fix bug");
     assert_eq!(cards[0].project_id, Some(project_id));
@@ -307,10 +372,7 @@ async fn edit_card_can_move_between_project_and_section() {
     })
     .await
     .unwrap();
-    let card_id = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
-        .await
-        .unwrap()[0]
-        .id;
+    let card_id = cards_by_project(&db, project_id).await[0].id;
 
     db.begin(async |uow| {
         CardCommands::new(uow)
@@ -327,10 +389,7 @@ async fn edit_card_can_move_between_project_and_section() {
     .await
     .unwrap();
 
-    let card = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
-        .await
-        .unwrap()[0]
-        .clone();
+    let card = cards_by_project(&db, project_id).await[0].clone();
     assert_eq!(card.section_id, Some(section_id));
 
     db.begin(async |uow| {
@@ -341,10 +400,7 @@ async fn edit_card_can_move_between_project_and_section() {
     .await
     .unwrap();
 
-    let card = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
-        .await
-        .unwrap()[0]
-        .clone();
+    let card = cards_by_project(&db, project_id).await[0].clone();
     assert_eq!(card.project_id, Some(project_id));
     assert_eq!(card.section_id, None);
 }
@@ -375,9 +431,7 @@ async fn deleting_section_keeps_cards_in_project() {
         .await
         .unwrap();
 
-    let cards = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
-        .await
-        .unwrap();
+    let cards = cards_by_project(&db, project_id).await;
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].project_id, Some(project_id));
     assert_eq!(cards[0].section_id, None);
@@ -389,10 +443,7 @@ async fn ids_are_unique_after_delete() {
     db.begin(async |uow| CardCommands::new(uow).add("first").await)
         .await
         .unwrap();
-    let first_id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let first_id = all_cards(&db).await[0].id;
     db.begin(async |uow| CardCommands::new(uow).delete(first_id).await)
         .await
         .unwrap();
@@ -400,10 +451,7 @@ async fn ids_are_unique_after_delete() {
     db.begin(async |uow| CardCommands::new(uow).add("second").await)
         .await
         .unwrap();
-    let second_id = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap()[0]
-        .id;
+    let second_id = all_cards(&db).await[0].id;
     assert_ne!(first_id, second_id);
 }
 
@@ -411,32 +459,24 @@ async fn ids_are_unique_after_delete() {
 async fn full_workflow() {
     let db = fresh_db().await;
 
-    // Add a few cards
     for title in ["buy groceries", "write tests", "deploy app"] {
         db.begin(async |uow| CardCommands::new(uow).add(title).await)
             .await
             .unwrap();
     }
 
-    // Complete one
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     let middle_card_id = cards[1].id;
     let last_card_id = cards[2].id;
     db.begin(async |uow| CardCommands::new(uow).toggle(middle_card_id).await)
         .await
         .unwrap();
 
-    // Delete one
     db.begin(async |uow| CardCommands::new(uow).delete(last_card_id).await)
         .await
         .unwrap();
 
-    // Verify final state
-    let cards = (SqlxCardQueries::new(db.conn()).get_all_cards())
-        .await
-        .unwrap();
+    let cards = all_cards(&db).await;
     assert_eq!(cards.len(), 2);
     assert_eq!(cards[0].title, "buy groceries");
     assert_eq!(cards[0].description, "");

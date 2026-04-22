@@ -1,64 +1,76 @@
 <script>
   import { invoke } from "@tauri-apps/api/core";
 
+  const PAGE_SIZE = 100;
+
   let projects = $state([]);
-  let sections = $state([]);
-  let cards = $state([]);
-  let events = $state([]);
+  let inboxCards = $state([]);
+  let projectData = $state(null);
   let selectedProjectId = $state(null);
-  let selectedTab = $state("cards");
   let cardInput = $state("");
   let cardSectionInput = $state("");
-  let eventTitleInput = $state("");
-  let eventDateInput = $state("");
   let projectInput = $state("");
   let sectionInput = $state("");
   let editingCardId = $state(null);
-  let editingEventId = $state(null);
   let editingSectionId = $state(null);
   let editTitle = $state("");
   let editDescription = $state("");
   let editDeadline = $state("");
-  let editEventDate = $state("");
   let editCardSectionId = $state("");
   let editSectionTitle = $state("");
 
   const selectedProject = $derived(
-    projects.find((project) => project.id === selectedProjectId) ?? null,
+    projectData?.project ?? projects.find((project) => project.id === selectedProjectId) ?? null,
+  );
+  const sectionGroups = $derived(projectData?.sections ?? []);
+  const sections = $derived(sectionGroups.map((group) => group.section));
+  const unsectionedCards = $derived(projectData?.cards_without_section ?? []);
+  const cards = $derived(
+    selectedProjectId === null
+      ? inboxCards
+      : [...unsectionedCards, ...sectionGroups.flatMap((group) => group.cards)],
   );
   const editingCard = $derived(cards.find((card) => card.id === editingCardId) ?? null);
-  const editingEvent = $derived(events.find((event) => event.id === editingEventId) ?? null);
   const editingSection = $derived(
     sections.find((section) => section.id === editingSectionId) ?? null,
   );
-  const unsectionedCards = $derived(cards.filter((card) => card.section_id === null));
-  const sectionGroups = $derived(
-    sections.map((section) => ({
-      section,
-      cards: cards.filter((card) => card.section_id === section.id),
-    })),
-  );
+
+  const ignoreFilter = () => ({ kind: "ignore" });
+  const noneFilter = () => ({ kind: "none" });
 
   async function loadProjects() {
-    projects = await invoke("get_projects");
+    projects = await invoke("filter_projects", {
+      limit: PAGE_SIZE,
+      offset: 0,
+    });
   }
 
-  async function loadSections() {
+  async function loadInboxCards() {
+    inboxCards = await invoke("filter_cards", {
+      limit: PAGE_SIZE,
+      offset: 0,
+      deadline: ignoreFilter(),
+      projectId: noneFilter(),
+      sectionId: ignoreFilter(),
+    });
+  }
+
+  async function loadProjectData() {
     if (selectedProjectId === null) {
-      sections = [];
+      projectData = null;
       return;
     }
 
-    sections = await invoke("get_sections_by_project", {
+    projectData = await invoke("get_project", {
       projectId: selectedProjectId,
     });
   }
 
-  async function loadCards() {
+  async function refreshSelectedView() {
     if (selectedProjectId === null) {
-      cards = await invoke("get_cards_without_project");
+      await loadInboxCards();
     } else {
-      cards = await invoke("get_cards_by_project", { projectId: selectedProjectId });
+      await loadProjectData();
     }
   }
 
@@ -72,32 +84,8 @@
       projectId: selectedProjectId,
       sectionId: selectedProjectId === null ? null : cardSectionInput || null,
     });
-    await loadCards();
+    await refreshSelectedView();
     cardSectionInput = "";
-  }
-
-  async function loadEvents() {
-    if (selectedProjectId === null) {
-      events = await invoke("get_events_without_project");
-    } else {
-      events = await invoke("get_events_by_project", { projectId: selectedProjectId });
-    }
-  }
-
-  async function addEvent() {
-    const title = eventTitleInput.trim();
-    const date = eventDateInput;
-    if (!title || !date) return;
-
-    eventTitleInput = "";
-    eventDateInput = "";
-    await invoke("add_event", {
-      title,
-      date,
-      description: "",
-      projectId: selectedProjectId,
-    });
-    await loadEvents();
   }
 
   async function addProject() {
@@ -105,7 +93,8 @@
     if (!title) return;
 
     projectInput = "";
-    projects = await invoke("add_project", { title });
+    await invoke("add_project", { title });
+    await loadProjects();
   }
 
   async function addSection() {
@@ -117,68 +106,50 @@
       title,
       projectId: selectedProjectId,
     });
-    await loadSections();
+    await loadProjectData();
   }
 
   async function toggleCard(id) {
     await invoke("toggle_card", { id });
-    await loadCards();
+    await refreshSelectedView();
   }
 
   async function deleteCard(id) {
     await invoke("delete_card", { id });
-    await loadCards();
+    await refreshSelectedView();
   }
 
   async function deleteSection(id) {
     await invoke("delete_section", { id });
-    await Promise.all([loadSections(), loadCards()]);
+    await loadProjectData();
   }
 
   function openCardEditor(card) {
     editingCardId = card.id;
-    editingEventId = null;
     editingSectionId = null;
     editTitle = card.title;
     editDescription = card.description ?? "";
     editDeadline = card.deadline ? card.deadline.slice(0, 10) : "";
-    editEventDate = "";
     editCardSectionId = card.section_id ?? "";
-    editSectionTitle = "";
-  }
-
-  function openEventEditor(event) {
-    editingEventId = event.id;
-    editingCardId = null;
-    editingSectionId = null;
-    editTitle = event.title;
-    editDescription = event.description ?? "";
-    editEventDate = event.date ? event.date.slice(0, 10) : "";
-    editDeadline = "";
-    editCardSectionId = "";
     editSectionTitle = "";
   }
 
   function openSectionEditor(section) {
     editingSectionId = section.id;
     editingCardId = null;
-    editingEventId = null;
     editSectionTitle = section.title;
     editTitle = "";
     editDescription = "";
     editDeadline = "";
-    editEventDate = "";
     editCardSectionId = "";
   }
 
   function closeEditor() {
     editingCardId = null;
-    editingEventId = null;
     editingSectionId = null;
     editTitle = "";
     editDescription = "";
     editDeadline = "";
-    editEventDate = "";
     editCardSectionId = "";
     editSectionTitle = "";
   }
@@ -195,21 +166,7 @@
       projectId: selectedProjectId,
       sectionId: selectedProjectId === null ? null : editCardSectionId || null,
     });
-    await loadCards();
-    closeEditor();
-  }
-
-  async function saveEventEdits() {
-    const title = editTitle.trim();
-    if (!editingEventId || !title || !editEventDate) return;
-
-    await invoke("update_event", {
-      id: editingEventId,
-      title,
-      description: editDescription.trim(),
-      date: editEventDate,
-    });
-    await loadEvents();
+    await refreshSelectedView();
     closeEditor();
   }
 
@@ -221,19 +178,13 @@
       id: editingSectionId,
       title,
     });
-    await loadSections();
+    await loadProjectData();
     closeEditor();
   }
 
   function selectProject(id) {
     selectedProjectId = id;
-    selectedTab = "cards";
     cardSectionInput = "";
-    closeEditor();
-  }
-
-  function selectTab(tab) {
-    selectedTab = tab;
     closeEditor();
   }
 
@@ -245,10 +196,6 @@
     if (event.key === "Enter") addProject();
   }
 
-  function handleEventKeydown(event) {
-    if (event.key === "Enter") addEvent();
-  }
-
   function handleSectionKeydown(event) {
     if (event.key === "Enter") addSection();
   }
@@ -258,22 +205,11 @@
   });
 
   $effect(() => {
-    loadSections();
-  });
-
-  $effect(() => {
-    if (selectedTab === "events") {
-      loadEvents();
-    } else {
-      loadCards();
-    }
+    refreshSelectedView();
   });
 
   $effect(() => {
     if (editingCardId !== null && !cards.some((card) => card.id === editingCardId)) {
-      closeEditor();
-    }
-    if (editingEventId !== null && !events.some((event) => event.id === editingEventId)) {
       closeEditor();
     }
     if (editingSectionId !== null && !sections.some((section) => section.id === editingSectionId)) {
@@ -331,22 +267,6 @@
         <p class="eyebrow">{selectedProjectId === null ? "Personal space" : "Project"}</p>
         <h1>{selectedProject?.title ?? "Inbox"}</h1>
       </div>
-      {#if selectedProjectId !== null}
-        <div class="tabs">
-          <button
-            class:active={selectedTab === "cards"}
-            onclick={() => selectTab("cards")}
-          >
-            Todos
-          </button>
-          <button
-            class:active={selectedTab === "events"}
-            onclick={() => selectTab("events")}
-          >
-            Events
-          </button>
-        </div>
-      {/if}
     </div>
 
     {#if editingCard}
@@ -380,26 +300,6 @@
           <button class="secondary" onclick={closeEditor}>Back</button>
         </div>
       </section>
-    {:else if editingEvent}
-      <section class="edit-page">
-        <h2>Edit event</h2>
-        <label>
-          Title
-          <input type="text" bind:value={editTitle} />
-        </label>
-        <label>
-          Date
-          <input type="date" bind:value={editEventDate} />
-        </label>
-        <label>
-          Description
-          <textarea rows="4" bind:value={editDescription}></textarea>
-        </label>
-        <div class="edit-actions">
-          <button onclick={saveEventEdits}>Save</button>
-          <button class="secondary" onclick={closeEditor}>Back</button>
-        </div>
-      </section>
     {:else if editingSection}
       <section class="edit-page">
         <h2>Edit section</h2>
@@ -412,29 +312,6 @@
           <button class="secondary" onclick={closeEditor}>Back</button>
         </div>
       </section>
-    {:else if selectedTab === "events"}
-      <div class="event-input-row">
-        <input
-          type="text"
-          placeholder="Event title"
-          bind:value={eventTitleInput}
-          onkeydown={handleEventKeydown}
-        />
-        <input type="date" bind:value={eventDateInput} />
-        <button onclick={addEvent}>Add</button>
-      </div>
-
-      <ul class="event-list">
-        {#each events as event (event.id)}
-          <li>
-            <div class="event-main">
-              <span class="event-date">{event.date.slice(0, 10)}</span>
-              <span>{event.title}</span>
-            </div>
-            <button class="edit" onclick={() => openEventEditor(event)}>Edit</button>
-          </li>
-        {/each}
-      </ul>
     {:else}
       <div class="todo-toolbar">
         <div class="input-row">
@@ -472,7 +349,7 @@
 
       {#if selectedProjectId === null}
         <ul class="card-list">
-          {#each cards as card (card.id)}
+          {#each inboxCards as card (card.id)}
             <li class:completed={card.completed}>
               <input
                 type="checkbox"
@@ -485,10 +362,10 @@
             </li>
           {/each}
         </ul>
-      {:else if sections.length === 0}
-        {#if cards.length > 0}
+      {:else if sectionGroups.length === 0}
+        {#if unsectionedCards.length > 0}
           <ul class="card-list">
-            {#each cards as card (card.id)}
+            {#each unsectionedCards as card (card.id)}
               <li class:completed={card.completed}>
                 <input
                   type="checkbox"

@@ -2,6 +2,7 @@ use crate::section::entity::Section;
 use crate::section::queries::SectionQueries;
 use crate::shared::adapters::sqlx::database::SqlxConnection;
 use crate::shared::error::AppErr;
+use crate::shared::filter::QueryFilter;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -16,13 +17,42 @@ impl SqlxSectionQueries {
 }
 
 impl SectionQueries for SqlxSectionQueries {
-    async fn get_sections_by_project(&self, project_id: Uuid) -> Result<Vec<Section>, AppErr> {
-        let rows = sqlx::query(
-            "SELECT id, title, project_id FROM sections WHERE project_id = ?1 ORDER BY rowid",
-        )
-        .bind(project_id)
-        .fetch_all(&self.conn)
-        .await?;
+    async fn filter(
+        &self,
+        limit: u32,
+        offset: u32,
+        project_id: QueryFilter<Uuid>,
+    ) -> Result<Vec<Section>, AppErr> {
+        let rows = match project_id {
+            QueryFilter::Val(project_id) => {
+                sqlx::query(
+                    "SELECT id, title, project_id FROM sections WHERE project_id = ?1 ORDER BY rowid LIMIT ?2 OFFSET ?3",
+                )
+                .bind(project_id)
+                .bind(i64::from(limit))
+                .bind(i64::from(offset))
+                .fetch_all(&self.conn)
+                .await?
+            }
+            QueryFilter::None => {
+                sqlx::query(
+                    "SELECT id, title, project_id FROM sections WHERE project_id IS NULL ORDER BY rowid LIMIT ?1 OFFSET ?2",
+                )
+                .bind(i64::from(limit))
+                .bind(i64::from(offset))
+                .fetch_all(&self.conn)
+                .await?
+            }
+            QueryFilter::Ignore => {
+                sqlx::query(
+                    "SELECT id, title, project_id FROM sections ORDER BY rowid LIMIT ?1 OFFSET ?2",
+                )
+                .bind(i64::from(limit))
+                .bind(i64::from(offset))
+                .fetch_all(&self.conn)
+                .await?
+            }
+        };
 
         let sections = rows
             .into_iter()
