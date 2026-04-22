@@ -1,8 +1,8 @@
-use chrono::NaiveDate;
 use autograph::{
-    CardCommands, CardQueries, Database, DatabaseBuilder, SqlxCardQueries, SqlxDatabase,
-    SqlxDatabaseBuilder,
+    CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, SectionCommands,
+    SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder,
 };
+use chrono::NaiveDate;
 use uuid::Uuid;
 
 async fn fresh_db() -> SqlxDatabase {
@@ -36,6 +36,8 @@ async fn add_single_card() {
     assert_eq!(cards[0].description, "");
     assert_eq!(cards[0].deadline, None);
     assert!(!cards[0].completed);
+    assert_eq!(cards[0].project_id, None);
+    assert_eq!(cards[0].section_id, None);
 }
 
 #[tokio::test]
@@ -198,6 +200,8 @@ async fn edit_updates_card_fields() {
                         .unwrap()
                         .and_utc(),
                 ),
+                None,
+                None,
             )
             .await
     })
@@ -213,6 +217,170 @@ async fn edit_updates_card_fields() {
         cards[0].deadline.map(|deadline| deadline.date_naive()),
         Some(NaiveDate::from_ymd_opt(2026, 5, 10).unwrap())
     );
+    assert_eq!(cards[0].project_id, None);
+    assert_eq!(cards[0].section_id, None);
+}
+
+#[tokio::test]
+async fn add_card_with_section_assigns_project_and_section() {
+    let db = fresh_db().await;
+    let project_id = db
+        .begin(async |uow| ProjectCommands::new(uow).add("Work").await)
+        .await
+        .unwrap()
+        .id;
+    let section_id = db
+        .begin(async |uow| SectionCommands::new(uow).add("Today", project_id).await)
+        .await
+        .unwrap()
+        .id;
+
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .add_with_section("fix bug", Some(project_id), section_id)
+            .await
+    })
+    .await
+    .unwrap();
+
+    let cards = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
+        .await
+        .unwrap();
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].title, "fix bug");
+    assert_eq!(cards[0].project_id, Some(project_id));
+    assert_eq!(cards[0].section_id, Some(section_id));
+}
+
+#[tokio::test]
+async fn add_card_rejects_section_from_another_project() {
+    let db = fresh_db().await;
+    let project_a = db
+        .begin(async |uow| ProjectCommands::new(uow).add("A").await)
+        .await
+        .unwrap()
+        .id;
+    let project_b = db
+        .begin(async |uow| ProjectCommands::new(uow).add("B").await)
+        .await
+        .unwrap()
+        .id;
+    let section_id = db
+        .begin(async |uow| SectionCommands::new(uow).add("Doing", project_a).await)
+        .await
+        .unwrap()
+        .id;
+
+    let err = db
+        .begin(async |uow| {
+            CardCommands::new(uow)
+                .add_with_section("wrong place", Some(project_b), section_id)
+                .await
+        })
+        .await
+        .unwrap_err();
+
+    assert!(
+        err.to_string()
+            .contains("Section must belong to the selected project")
+    );
+}
+
+#[tokio::test]
+async fn edit_card_can_move_between_project_and_section() {
+    let db = fresh_db().await;
+    let project_id = db
+        .begin(async |uow| ProjectCommands::new(uow).add("Work").await)
+        .await
+        .unwrap()
+        .id;
+    let section_id = db
+        .begin(async |uow| SectionCommands::new(uow).add("Later", project_id).await)
+        .await
+        .unwrap()
+        .id;
+
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .add_with_project("prepare notes", project_id)
+            .await
+    })
+    .await
+    .unwrap();
+    let card_id = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
+        .await
+        .unwrap()[0]
+        .id;
+
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .edit(
+                card_id,
+                "prepare notes",
+                "",
+                None,
+                Some(project_id),
+                Some(section_id),
+            )
+            .await
+    })
+    .await
+    .unwrap();
+
+    let card = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
+        .await
+        .unwrap()[0]
+        .clone();
+    assert_eq!(card.section_id, Some(section_id));
+
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .edit(card_id, "prepare notes", "", None, Some(project_id), None)
+            .await
+    })
+    .await
+    .unwrap();
+
+    let card = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
+        .await
+        .unwrap()[0]
+        .clone();
+    assert_eq!(card.project_id, Some(project_id));
+    assert_eq!(card.section_id, None);
+}
+
+#[tokio::test]
+async fn deleting_section_keeps_cards_in_project() {
+    let db = fresh_db().await;
+    let project_id = db
+        .begin(async |uow| ProjectCommands::new(uow).add("Work").await)
+        .await
+        .unwrap()
+        .id;
+    let section_id = db
+        .begin(async |uow| SectionCommands::new(uow).add("Soon", project_id).await)
+        .await
+        .unwrap()
+        .id;
+
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .add_with_section("ship release", Some(project_id), section_id)
+            .await
+    })
+    .await
+    .unwrap();
+
+    db.begin(async |uow| SectionCommands::new(uow).delete(section_id).await)
+        .await
+        .unwrap();
+
+    let cards = (SqlxCardQueries::new(db.conn()).get_cards_by_project(project_id))
+        .await
+        .unwrap();
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].project_id, Some(project_id));
+    assert_eq!(cards[0].section_id, None);
 }
 
 #[tokio::test]

@@ -1,5 +1,5 @@
-use crate::shared::error::AppErr;
 use crate::card::entity::Card;
+use crate::shared::error::AppErr;
 use std::future::Future;
 use uuid::Uuid;
 

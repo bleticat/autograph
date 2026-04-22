@@ -2,8 +2,9 @@
 
 use autograph::{
     AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Event, EventCommands,
-    EventQueries, Project, ProjectCommands, ProjectQueries, SqlxCardQueries, SqlxDatabase,
-    SqlxDatabaseBuilder, SqlxEventQueries, SqlxProjectQueries, parse_date, parse_optional_date,
+    EventQueries, Project, ProjectCommands, ProjectQueries, Section, SectionCommands,
+    SectionQueries, SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder, SqlxEventQueries,
+    SqlxProjectQueries, SqlxSectionQueries, parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
@@ -13,6 +14,7 @@ type DatabaseBuilderAdapter = SqlxDatabaseBuilder;
 type CardQueryAdapter = SqlxCardQueries;
 type EventQueryAdapter = SqlxEventQueries;
 type ProjectQueryAdapter = SqlxProjectQueries;
+type SectionQueryAdapter = SqlxSectionQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
 #[derive(Clone, Debug, Serialize)]
@@ -67,20 +69,17 @@ async fn get_cards_by_project(
 async fn add_card(
     title: String,
     project_id: Option<String>,
+    section_id: Option<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Card>> {
     let project_id = parse_optional_uuid(project_id, "project_id")?;
+    let section_id = parse_optional_uuid(section_id, "section_id")?;
     state
         .db
         .begin(async |uow| {
-            match project_id {
-                Some(pid) => {
-                    CardCommands::new(uow).add_with_project(&title, pid).await?;
-                }
-                None => {
-                    CardCommands::new(uow).add(&title).await?;
-                }
-            }
+            CardCommands::new(uow)
+                .add_with_assignment(&title, project_id, section_id)
+                .await?;
             Ok(())
         })
         .await?;
@@ -119,15 +118,19 @@ async fn update_card(
     title: String,
     description: String,
     deadline: Option<String>,
+    project_id: Option<String>,
+    section_id: Option<String>,
     state: State<'_, AppState>,
 ) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
     let deadline = parse_optional_date(deadline.as_deref())?;
+    let project_id = parse_optional_uuid(project_id, "project_id")?;
+    let section_id = parse_optional_uuid(section_id, "section_id")?;
     state
         .db
         .begin(async |uow| {
             CardCommands::new(uow)
-                .edit(id, &title, &description, deadline)
+                .edit(id, &title, &description, deadline, project_id, section_id)
                 .await
         })
         .await?;
@@ -236,6 +239,54 @@ async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<V
         .await?)
 }
 
+#[tauri::command]
+async fn get_sections_by_project(
+    project_id: String,
+    state: State<'_, AppState>,
+) -> TauriResult<Vec<Section>> {
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    Ok(SectionQueryAdapter::new(state.db.conn())
+        .get_sections_by_project(project_id)
+        .await?)
+}
+
+#[tauri::command]
+async fn add_section(
+    title: String,
+    project_id: String,
+    state: State<'_, AppState>,
+) -> TauriResult<()> {
+    let project_id = parse_uuid(&project_id, "project_id")?;
+    state
+        .db
+        .begin(async |uow| {
+            SectionCommands::new(uow).add(&title, project_id).await?;
+            Ok(())
+        })
+        .await?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_section(id: String, title: String, state: State<'_, AppState>) -> TauriResult<()> {
+    let id = parse_uuid(&id, "section id")?;
+    state
+        .db
+        .begin(async |uow| SectionCommands::new(uow).edit(id, &title).await)
+        .await?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_section(id: String, state: State<'_, AppState>) -> TauriResult<()> {
+    let id = parse_uuid(&id, "section id")?;
+    state
+        .db
+        .begin(async |uow| SectionCommands::new(uow).delete(id).await)
+        .await?;
+    Ok(())
+}
+
 fn main() {
     let db = block_on(
         DatabaseBuilderAdapter::open("../db.sqlite")
@@ -261,6 +312,10 @@ fn main() {
             update_event,
             get_projects,
             add_project,
+            get_sections_by_project,
+            add_section,
+            update_section,
+            delete_section,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

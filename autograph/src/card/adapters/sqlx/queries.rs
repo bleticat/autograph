@@ -18,7 +18,7 @@ impl SqlxCardQueries {
 impl CardQueries for SqlxCardQueries {
     async fn get_all_cards(&self) -> Result<Vec<Card>, AppErr> {
         let rows = sqlx::query(
-            "SELECT id, title, description, deadline, completed, project_id FROM cards ORDER BY rowid",
+            "SELECT id, title, description, deadline, completed, project_id, section_id FROM cards ORDER BY rowid",
         )
         .fetch_all(&self.conn)
         .await?;
@@ -31,6 +31,7 @@ impl CardQueries for SqlxCardQueries {
                 deadline: row.get(3),
                 completed: row.get::<bool, _>(4),
                 project_id: row.get(5),
+                section_id: row.get(6),
             })
             .collect();
         Ok(cards)
@@ -38,7 +39,7 @@ impl CardQueries for SqlxCardQueries {
 
     async fn get_cards_without_project(&self) -> Result<Vec<Card>, AppErr> {
         let rows = sqlx::query(
-            "SELECT id, title, description, deadline, completed, project_id FROM cards WHERE project_id IS NULL ORDER BY rowid",
+            "SELECT id, title, description, deadline, completed, project_id, section_id FROM cards WHERE project_id IS NULL ORDER BY rowid",
         )
         .fetch_all(&self.conn)
         .await?;
@@ -51,6 +52,7 @@ impl CardQueries for SqlxCardQueries {
                 deadline: row.get(3),
                 completed: row.get::<bool, _>(4),
                 project_id: row.get(5),
+                section_id: row.get(6),
             })
             .collect();
         Ok(cards)
@@ -58,7 +60,7 @@ impl CardQueries for SqlxCardQueries {
 
     async fn get_cards_by_project(&self, project_id: Uuid) -> Result<Vec<Card>, AppErr> {
         let rows = sqlx::query(
-            "SELECT id, title, description, deadline, completed, project_id FROM cards WHERE project_id = ?1 ORDER BY rowid",
+            "SELECT id, title, description, deadline, completed, project_id, section_id FROM cards WHERE project_id = ?1 ORDER BY rowid",
         )
         .bind(project_id)
         .fetch_all(&self.conn)
@@ -72,6 +74,7 @@ impl CardQueries for SqlxCardQueries {
                 deadline: row.get(3),
                 completed: row.get::<bool, _>(4),
                 project_id: row.get(5),
+                section_id: row.get(6),
             })
             .collect();
         Ok(cards)

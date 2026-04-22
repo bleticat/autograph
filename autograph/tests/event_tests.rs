@@ -1,8 +1,8 @@
-use chrono::NaiveDate;
 use autograph::{
     Database, DatabaseBuilder, EventCommands, EventQueries, ProjectCommands, SqlxDatabase,
     SqlxDatabaseBuilder, SqlxEventQueries,
 };
+use chrono::NaiveDate;
 
 async fn fresh_db() -> SqlxDatabase {
     SqlxDatabaseBuilder::open(":memory:")

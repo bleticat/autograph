@@ -10,4 +10,5 @@ pub struct Card {
     pub deadline: Option<DateTime<Utc>>,
     pub completed: bool,
     pub project_id: Option<Uuid>,
+    pub section_id: Option<Uuid>,
 }

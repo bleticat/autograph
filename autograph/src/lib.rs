@@ -1,6 +1,7 @@
 pub mod card;
 pub mod event;
 pub mod project;
+pub mod section;
 pub mod shared;
 
 pub use card::adapters::sqlx::queries::SqlxCardQueries;
@@ -15,6 +16,10 @@ pub use project::adapters::sqlx::queries::SqlxProjectQueries;
 pub use project::commands::ProjectCommands;
 pub use project::entity::Project;
 pub use project::queries::ProjectQueries;
+pub use section::adapters::sqlx::queries::SqlxSectionQueries;
+pub use section::commands::SectionCommands;
+pub use section::entity::Section;
+pub use section::queries::SectionQueries;
 pub use shared::adapters::sqlx::database::SqlxDatabase;
 pub use shared::adapters::sqlx::database::SqlxDatabaseBuilder;
 pub use shared::adapters::sqlx::unit_of_work::SqlxUnitOfWork;

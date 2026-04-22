@@ -5,6 +5,7 @@ pub enum AppErr {
     Db(sqlx::Error),
     Migration(sqlx::migrate::MigrateError),
     Parse(String),
+    Validation(String),
 }
 
 impl fmt::Display for AppErr {
@@ -13,6 +14,7 @@ impl fmt::Display for AppErr {
             AppErr::Db(e) => write!(f, "database error: {e}"),
             AppErr::Migration(e) => write!(f, "migration error: {e}"),
             AppErr::Parse(e) => write!(f, "parse error: {e}"),
+            AppErr::Validation(e) => write!(f, "validation error: {e}"),
         }
     }
 }
@@ -23,6 +25,7 @@ impl std::error::Error for AppErr {
             AppErr::Db(e) => Some(e),
             AppErr::Migration(e) => Some(e),
             AppErr::Parse(_) => None,
+            AppErr::Validation(_) => None,
         }
     }
 }
