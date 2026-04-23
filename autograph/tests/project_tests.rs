@@ -1,37 +1,37 @@
 use autograph::{
     CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, ProjectQueries,
-    QueryFilter, SectionCommands, SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder,
-    SqlxProjectQueries,
+    QueryFilter, SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SeaOrmProjectQueries,
+    SectionCommands,
 };
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
 
-async fn fresh_db() -> SqlxDatabase {
-    SqlxDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> SeaOrmDatabase {
+    SeaOrmDatabaseBuilder::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn all_projects(db: &SqlxDatabase) -> Vec<autograph::Project> {
-    SqlxProjectQueries::new(db.conn())
+async fn all_projects(db: &SeaOrmDatabase) -> Vec<autograph::Project> {
+    SeaOrmProjectQueries::new(db.conn())
         .filter(DEFAULT_LIMIT, 0)
         .await
         .unwrap()
 }
 
-async fn get_project(db: &SqlxDatabase, project_id: Uuid) -> autograph::ProjectData {
-    SqlxProjectQueries::new(db.conn())
+async fn get_project(db: &SeaOrmDatabase, project_id: Uuid) -> autograph::ProjectData {
+    SeaOrmProjectQueries::new(db.conn())
         .get_project(project_id)
         .await
         .unwrap()
         .expect("project should exist")
 }
 
-async fn cards_without_project(db: &SqlxDatabase) -> Vec<autograph::Card> {
-    SqlxCardQueries::new(db.conn())
+async fn cards_without_project(db: &SeaOrmDatabase) -> Vec<autograph::Card> {
+    SeaOrmCardQueries::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -43,8 +43,8 @@ async fn cards_without_project(db: &SqlxDatabase) -> Vec<autograph::Card> {
         .unwrap()
 }
 
-async fn cards_by_project(db: &SqlxDatabase, project_id: Uuid) -> Vec<autograph::Card> {
-    SqlxCardQueries::new(db.conn())
+async fn cards_by_project(db: &SeaOrmDatabase, project_id: Uuid) -> Vec<autograph::Card> {
+    SeaOrmCardQueries::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -107,7 +107,7 @@ async fn project_filter_respects_limit_and_offset() {
         .unwrap();
     }
 
-    let projects = SqlxProjectQueries::new(db.conn())
+    let projects = SeaOrmProjectQueries::new(db.conn())
         .filter(1, 1)
         .await
         .unwrap();

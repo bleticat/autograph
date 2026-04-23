@@ -1,21 +1,21 @@
 use autograph::{
-    Database, DatabaseBuilder, ProjectCommands, QueryFilter, SectionCommands, SectionQueries,
-    SqlxDatabase, SqlxDatabaseBuilder, SqlxSectionQueries,
+    Database, DatabaseBuilder, ProjectCommands, QueryFilter, SeaOrmDatabase, SeaOrmDatabaseBuilder,
+    SeaOrmSectionQueries, SectionCommands, SectionQueries,
 };
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
 
-async fn fresh_db() -> SqlxDatabase {
-    SqlxDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> SeaOrmDatabase {
+    SeaOrmDatabaseBuilder::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn sections(db: &SqlxDatabase, project_id: QueryFilter<Uuid>) -> Vec<autograph::Section> {
-    SqlxSectionQueries::new(db.conn())
+async fn sections(db: &SeaOrmDatabase, project_id: QueryFilter<Uuid>) -> Vec<autograph::Section> {
+    SeaOrmSectionQueries::new(db.conn())
         .filter(DEFAULT_LIMIT, 0, project_id)
         .await
         .unwrap()
@@ -74,7 +74,7 @@ async fn section_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let sections = SqlxSectionQueries::new(db.conn())
+    let sections = SeaOrmSectionQueries::new(db.conn())
         .filter(1, 1, QueryFilter::Val(project_id))
         .await
         .unwrap();

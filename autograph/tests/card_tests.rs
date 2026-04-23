@@ -1,22 +1,22 @@
 use autograph::{
     Card, CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, QueryFilter,
-    SectionCommands, SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder,
+    SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
 };
 use chrono::NaiveDate;
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
 
-async fn fresh_db() -> SqlxDatabase {
-    SqlxDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> SeaOrmDatabase {
+    SeaOrmDatabaseBuilder::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn all_cards(db: &SqlxDatabase) -> Vec<Card> {
-    SqlxCardQueries::new(db.conn())
+async fn all_cards(db: &SeaOrmDatabase) -> Vec<Card> {
+    SeaOrmCardQueries::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -28,8 +28,8 @@ async fn all_cards(db: &SqlxDatabase) -> Vec<Card> {
         .unwrap()
 }
 
-async fn cards_by_project(db: &SqlxDatabase, project_id: Uuid) -> Vec<Card> {
-    SqlxCardQueries::new(db.conn())
+async fn cards_by_project(db: &SeaOrmDatabase, project_id: Uuid) -> Vec<Card> {
+    SeaOrmCardQueries::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -41,8 +41,11 @@ async fn cards_by_project(db: &SqlxDatabase, project_id: Uuid) -> Vec<Card> {
         .unwrap()
 }
 
-async fn cards_with_deadline(db: &SqlxDatabase, date: chrono::DateTime<chrono::Utc>) -> Vec<Card> {
-    SqlxCardQueries::new(db.conn())
+async fn cards_with_deadline(
+    db: &SeaOrmDatabase,
+    date: chrono::DateTime<chrono::Utc>,
+) -> Vec<Card> {
+    SeaOrmCardQueries::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -101,7 +104,7 @@ async fn card_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let cards = SqlxCardQueries::new(db.conn())
+    let cards = SeaOrmCardQueries::new(db.conn())
         .filter(
             1,
             1,

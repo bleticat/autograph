@@ -2,18 +2,18 @@
 
 use autograph::{
     AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Project, ProjectCommands,
-    ProjectData, ProjectQueries, QueryFilter, Section, SectionCommands, SectionQueries,
-    SqlxCardQueries, SqlxDatabase, SqlxDatabaseBuilder, SqlxProjectQueries, SqlxSectionQueries,
-    parse_date, parse_optional_date,
+    ProjectData, ProjectQueries, QueryFilter, SeaOrmCardQueries, SeaOrmDatabase,
+    SeaOrmDatabaseBuilder, SeaOrmProjectQueries, SeaOrmSectionQueries, Section, SectionCommands,
+    SectionQueries, parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 
-type DatabaseAdapter = SqlxDatabase;
-type DatabaseBuilderAdapter = SqlxDatabaseBuilder;
-type CardQueryAdapter = SqlxCardQueries;
-type ProjectQueryAdapter = SqlxProjectQueries;
-type SectionQueryAdapter = SqlxSectionQueries;
+type DatabaseAdapter = SeaOrmDatabase;
+type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
+type CardQueryAdapter = SeaOrmCardQueries;
+type ProjectQueryAdapter = SeaOrmProjectQueries;
+type SectionQueryAdapter = SeaOrmSectionQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
 #[derive(Clone, Debug, Serialize)]

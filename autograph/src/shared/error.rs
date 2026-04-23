@@ -2,8 +2,9 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum AppErr {
-    Db(sqlx::Error),
-    Migration(sqlx::migrate::MigrateError),
+    SeaOrm(sea_orm::DbErr),
+    Sqlx(sqlx::Error),
+    Migration(String),
     Parse(String),
     Validation(String),
 }
@@ -11,7 +12,8 @@ pub enum AppErr {
 impl fmt::Display for AppErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AppErr::Db(e) => write!(f, "database error: {e}"),
+            AppErr::SeaOrm(e) => write!(f, "database error: {e}"),
+            AppErr::Sqlx(e) => write!(f, "database error: {e}"),
             AppErr::Migration(e) => write!(f, "migration error: {e}"),
             AppErr::Parse(e) => write!(f, "parse error: {e}"),
             AppErr::Validation(e) => write!(f, "validation error: {e}"),
@@ -22,22 +24,29 @@ impl fmt::Display for AppErr {
 impl std::error::Error for AppErr {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            AppErr::Db(e) => Some(e),
-            AppErr::Migration(e) => Some(e),
+            AppErr::SeaOrm(e) => Some(e),
+            AppErr::Sqlx(e) => Some(e),
             AppErr::Parse(_) => None,
+            AppErr::Migration(_) => None,
             AppErr::Validation(_) => None,
         }
     }
 }
 
+impl From<sea_orm::DbErr> for AppErr {
+    fn from(e: sea_orm::DbErr) -> Self {
+        AppErr::SeaOrm(e)
+    }
+}
+
 impl From<sqlx::Error> for AppErr {
     fn from(e: sqlx::Error) -> Self {
-        AppErr::Db(e)
+        AppErr::Sqlx(e)
     }
 }
 
 impl From<sqlx::migrate::MigrateError> for AppErr {
     fn from(e: sqlx::migrate::MigrateError) -> Self {
-        AppErr::Migration(e)
+        AppErr::Migration(e.to_string())
     }
 }
