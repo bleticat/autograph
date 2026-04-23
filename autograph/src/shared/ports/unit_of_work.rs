@@ -20,4 +20,5 @@ pub trait UnitOfWork: Send {
     fn card(&mut self) -> Self::CardRepository<'_>;
     fn section(&mut self) -> Self::SectionRepository<'_>;
     fn commit(self) -> impl Future<Output = Result<(), AppErr>> + Send;
+    fn rollback(self) -> impl Future<Output = Result<(), AppErr>> + Send;
 }
