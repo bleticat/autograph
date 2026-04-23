@@ -1,3 +1,4 @@
+use super::migrator::Migrator;
 use super::unit_of_work::SeaOrmUnitOfWork;
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Database, DatabaseBuilder};
@@ -5,6 +6,7 @@ use crate::shared::ports::unit_of_work::UnitOfWork;
 use sea_orm::{
     ConnectOptions, ConnectionTrait, Database as SeaOrmDriver, DatabaseConnection, TransactionTrait,
 };
+use sea_orm_migration::MigratorTrait;
 
 pub type SeaOrmConnection = DatabaseConnection;
 
@@ -55,7 +57,7 @@ impl DatabaseBuilder for SeaOrmDatabaseBuilder {
         }
 
         if self.run_migrations {
-            run_migrations(&conn).await?;
+            Migrator::up(&conn, None).await?;
         }
 
         Ok(SeaOrmDatabase { conn })
@@ -81,19 +83,3 @@ impl Database for SeaOrmDatabase {
         Ok(val)
     }
 }
-
-async fn run_migrations(conn: &DatabaseConnection) -> Result<(), AppErr> {
-    for migration in MIGRATIONS {
-        conn.execute_unprepared(migration).await?;
-    }
-
-    Ok(())
-}
-
-const MIGRATIONS: &[&str] = &[
-    include_str!("../sqlx/migrations/0001_init.sql"),
-    include_str!("../sqlx/migrations/0002_card_details.sql"),
-    include_str!("../sqlx/migrations/0003_events.sql"),
-    include_str!("../sqlx/migrations/0004_sections.sql"),
-    include_str!("../sqlx/migrations/0005_remove_events.sql"),
-];

@@ -6,17 +6,20 @@ use chrono::NaiveDate;
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
+type DatabaseAdapter = SeaOrmDatabase;
+type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
+type CardQueryAdapter = SeaOrmCardQueries;
 
-async fn fresh_db() -> SeaOrmDatabase {
-    SeaOrmDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> DatabaseAdapter {
+    DatabaseBuilderAdapter::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn all_cards(db: &SeaOrmDatabase) -> Vec<Card> {
-    SeaOrmCardQueries::new(db.conn())
+async fn all_cards(db: &DatabaseAdapter) -> Vec<Card> {
+    CardQueryAdapter::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -28,8 +31,8 @@ async fn all_cards(db: &SeaOrmDatabase) -> Vec<Card> {
         .unwrap()
 }
 
-async fn cards_by_project(db: &SeaOrmDatabase, project_id: Uuid) -> Vec<Card> {
-    SeaOrmCardQueries::new(db.conn())
+async fn cards_by_project(db: &DatabaseAdapter, project_id: Uuid) -> Vec<Card> {
+    CardQueryAdapter::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -42,10 +45,10 @@ async fn cards_by_project(db: &SeaOrmDatabase, project_id: Uuid) -> Vec<Card> {
 }
 
 async fn cards_with_deadline(
-    db: &SeaOrmDatabase,
+    db: &DatabaseAdapter,
     date: chrono::DateTime<chrono::Utc>,
 ) -> Vec<Card> {
-    SeaOrmCardQueries::new(db.conn())
+    CardQueryAdapter::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -104,7 +107,7 @@ async fn card_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let cards = SeaOrmCardQueries::new(db.conn())
+    let cards = CardQueryAdapter::new(db.conn())
         .filter(
             1,
             1,

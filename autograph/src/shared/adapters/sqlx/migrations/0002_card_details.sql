@@ -1,2 +1,0 @@
-ALTER TABLE cards ADD COLUMN description TEXT NOT NULL DEFAULT '';
-ALTER TABLE cards ADD COLUMN deadline TEXT;

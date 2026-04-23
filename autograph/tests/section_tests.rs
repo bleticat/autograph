@@ -5,17 +5,20 @@ use autograph::{
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
+type DatabaseAdapter = SeaOrmDatabase;
+type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
+type SectionQueryAdapter = SeaOrmSectionQueries;
 
-async fn fresh_db() -> SeaOrmDatabase {
-    SeaOrmDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> DatabaseAdapter {
+    DatabaseBuilderAdapter::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn sections(db: &SeaOrmDatabase, project_id: QueryFilter<Uuid>) -> Vec<autograph::Section> {
-    SeaOrmSectionQueries::new(db.conn())
+async fn sections(db: &DatabaseAdapter, project_id: QueryFilter<Uuid>) -> Vec<autograph::Section> {
+    SectionQueryAdapter::new(db.conn())
         .filter(DEFAULT_LIMIT, 0, project_id)
         .await
         .unwrap()
@@ -74,7 +77,7 @@ async fn section_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let sections = SeaOrmSectionQueries::new(db.conn())
+    let sections = SectionQueryAdapter::new(db.conn())
         .filter(1, 1, QueryFilter::Val(project_id))
         .await
         .unwrap();

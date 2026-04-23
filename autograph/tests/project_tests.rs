@@ -6,32 +6,36 @@ use autograph::{
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
+type DatabaseAdapter = SeaOrmDatabase;
+type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
+type CardQueryAdapter = SeaOrmCardQueries;
+type ProjectQueryAdapter = SeaOrmProjectQueries;
 
-async fn fresh_db() -> SeaOrmDatabase {
-    SeaOrmDatabaseBuilder::open(":memory:")
+async fn fresh_db() -> DatabaseAdapter {
+    DatabaseBuilderAdapter::open(":memory:")
         .migrate()
         .finish()
         .await
         .expect("failed to setup in-memory db")
 }
 
-async fn all_projects(db: &SeaOrmDatabase) -> Vec<autograph::Project> {
-    SeaOrmProjectQueries::new(db.conn())
+async fn all_projects(db: &DatabaseAdapter) -> Vec<autograph::Project> {
+    ProjectQueryAdapter::new(db.conn())
         .filter(DEFAULT_LIMIT, 0)
         .await
         .unwrap()
 }
 
-async fn get_project(db: &SeaOrmDatabase, project_id: Uuid) -> autograph::ProjectData {
-    SeaOrmProjectQueries::new(db.conn())
+async fn get_project(db: &DatabaseAdapter, project_id: Uuid) -> autograph::ProjectData {
+    ProjectQueryAdapter::new(db.conn())
         .get_project(project_id)
         .await
         .unwrap()
         .expect("project should exist")
 }
 
-async fn cards_without_project(db: &SeaOrmDatabase) -> Vec<autograph::Card> {
-    SeaOrmCardQueries::new(db.conn())
+async fn cards_without_project(db: &DatabaseAdapter) -> Vec<autograph::Card> {
+    CardQueryAdapter::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -43,8 +47,8 @@ async fn cards_without_project(db: &SeaOrmDatabase) -> Vec<autograph::Card> {
         .unwrap()
 }
 
-async fn cards_by_project(db: &SeaOrmDatabase, project_id: Uuid) -> Vec<autograph::Card> {
-    SeaOrmCardQueries::new(db.conn())
+async fn cards_by_project(db: &DatabaseAdapter, project_id: Uuid) -> Vec<autograph::Card> {
+    CardQueryAdapter::new(db.conn())
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -107,7 +111,7 @@ async fn project_filter_respects_limit_and_offset() {
         .unwrap();
     }
 
-    let projects = SeaOrmProjectQueries::new(db.conn())
+    let projects = ProjectQueryAdapter::new(db.conn())
         .filter(1, 1)
         .await
         .unwrap();
