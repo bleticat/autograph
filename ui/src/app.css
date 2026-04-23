@@ -340,6 +340,80 @@ h1 {
   min-height: 110px;
 }
 
+.history-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(12, 18, 38, 0.56);
+  border: 1px solid rgba(146, 160, 214, 0.14);
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-header h3 {
+  font-size: 1rem;
+}
+
+.history-header span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.history-list {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.history-step {
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(111, 130, 211, 0.18);
+  color: #dbe3ff;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.history-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.history-copy p {
+  color: var(--text);
+}
+
+.history-copy small {
+  color: var(--text-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.history-empty {
+  color: var(--text-muted);
+}
+
 .edit-actions {
   display: flex;
   gap: 10px;

@@ -31,6 +31,7 @@
       : [...unsectionedCards, ...sectionGroups.flatMap((group) => group.cards)],
   );
   const editingCard = $derived(cards.find((card) => card.id === editingCardId) ?? null);
+  const editingCardHistory = $derived(editingCard?.history ?? []);
   const editingSection = $derived(
     sections.find((section) => section.id === editingSectionId) ?? null,
   );
@@ -195,6 +196,69 @@
     if (event.key === "Enter") addSection();
   }
 
+  function lookupProjectName(projectId) {
+    if (!projectId) return "No project";
+    return (
+      projects.find((project) => project.id === projectId)?.title ??
+      `Project ${projectId.slice(0, 8)}`
+    );
+  }
+
+  function lookupSectionName(sectionId) {
+    if (!sectionId) return "No section";
+    return (
+      sections.find((section) => section.id === sectionId)?.title ??
+      `Section ${sectionId.slice(0, 8)}`
+    );
+  }
+
+  function formatHistoryTitle(item) {
+    switch (item.type) {
+      case "createCard":
+        return "Created card";
+      case "bindProject":
+        return item.project_id ? "Assigned to project" : "Removed from project";
+      case "bindSection":
+        return item.section_id ? "Assigned to section" : "Removed from section";
+      case "changeDescription":
+        return item.description ? "Changed description" : "Cleared description";
+      case "changeDeadline":
+        return item.deadline ? "Changed deadline" : "Removed deadline";
+      case "changeTitle":
+        return "Changed title";
+      case "deleteCard":
+        return "Deleted card";
+      default:
+        return "Updated card";
+    }
+  }
+
+  function formatHistoryDetail(item) {
+    switch (item.type) {
+      case "createCard":
+      case "changeTitle":
+        return item.title;
+      case "bindProject":
+        return lookupProjectName(item.project_id);
+      case "bindSection":
+        return lookupSectionName(item.section_id);
+      case "changeDescription":
+        return item.description || "Description cleared";
+      case "changeDeadline":
+        return item.deadline
+          ? new Date(item.deadline).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : "No deadline";
+      case "deleteCard":
+        return "This card is hidden from task lists but kept in history.";
+      default:
+        return "";
+    }
+  }
+
   $effect(() => {
     loadProjects();
   });
@@ -290,6 +354,27 @@
           Deadline
           <input type="date" bind:value={editDeadline} />
         </label>
+        <section class="history-panel">
+          <div class="history-header">
+            <h3>History</h3>
+            <span>{editingCardHistory.length} event{editingCardHistory.length === 1 ? "" : "s"}</span>
+          </div>
+          {#if editingCardHistory.length > 0}
+            <ol class="history-list">
+              {#each editingCardHistory as item, index (`${editingCard.id}-${index}`)}
+                <li class="history-item">
+                  <span class="history-step">{index + 1}</span>
+                  <div class="history-copy">
+                    <p>{formatHistoryTitle(item)}</p>
+                    <small>{formatHistoryDetail(item)}</small>
+                  </div>
+                </li>
+              {/each}
+            </ol>
+          {:else}
+            <p class="history-empty">No history yet.</p>
+          {/if}
+        </section>
         <div class="edit-actions">
           <button onclick={saveCardEdits}>Save</button>
           <button class="secondary" onclick={closeEditor}>Back</button>
