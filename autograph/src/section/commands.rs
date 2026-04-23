@@ -1,3 +1,5 @@
+use crate::card::entity::CardHistory;
+use crate::card::repository::{CardEventRepository, append_history_and_rebuild};
 use crate::section::entity::Section;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
@@ -34,6 +36,17 @@ impl<'a, U: UnitOfWork> SectionCommands<'a, U> {
     }
 
     pub async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
+        let cards = self.uow.card().get_by_section(id).await?;
+        for card in cards {
+            let mut repo = self.uow.card();
+            append_history_and_rebuild(
+                &mut repo,
+                card.id,
+                vec![CardHistory::BindSection { section_id: None }],
+            )
+            .await?;
+        }
+
         self.uow.section().delete(id).await
     }
 }

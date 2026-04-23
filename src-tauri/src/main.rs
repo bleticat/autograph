@@ -79,16 +79,6 @@ async fn add_card(
 }
 
 #[tauri::command]
-async fn toggle_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
-    let id = parse_uuid(&id, "card id")?;
-    state
-        .db
-        .begin(async |uow| CardCommands::new(uow).toggle(id).await)
-        .await?;
-    Ok(())
-}
-
-#[tauri::command]
 async fn delete_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
     state
@@ -221,7 +211,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             filter_cards,
             add_card,
-            toggle_card,
             delete_card,
             update_card,
             filter_projects,

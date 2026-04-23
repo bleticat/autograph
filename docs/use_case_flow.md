@@ -4,7 +4,7 @@ This document describes the generic flow used by the application for **commands*
 
 ## Generic command algorithm
 
-Applicable to handlers such as `add_card`, `toggle_card`, `delete_card`, `add_project`, and `add_section`.
+Applicable to handlers such as `add_card`, `delete_card`, `update_card`, `add_project`, and `add_section`.
 
 1. UI invokes a Tauri command.
 2. Tauri handler validates/parses inputs.

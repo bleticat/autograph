@@ -1,4 +1,5 @@
-use crate::card::entity::Card;
+use crate::card::entity::{Card, CardHistory};
+use crate::card::repository::append_history_and_rebuild;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
@@ -44,18 +45,22 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
         section_id: Option<Uuid>,
     ) -> Result<Card, AppErr> {
         let (project_id, section_id) = self.resolve_assignment(project_id, section_id).await?;
-        self.uow
-            .card()
-            .save(Card {
-                id: Uuid::nil(),
-                title: title.to_owned(),
-                description: String::new(),
-                deadline: None,
-                completed: false,
-                project_id,
-                section_id,
-            })
-            .await
+        let id = Uuid::new_v4();
+        let mut history = vec![CardHistory::CreateCard {
+            id,
+            title: title.to_owned(),
+        }];
+
+        if project_id.is_some() {
+            history.push(CardHistory::BindProject { project_id });
+        }
+
+        if section_id.is_some() {
+            history.push(CardHistory::BindSection { section_id });
+        }
+
+        let mut repo = self.uow.card();
+        append_history_and_rebuild(&mut repo, id, history).await
     }
 
     pub async fn edit(
@@ -68,29 +73,58 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
         section_id: Option<Uuid>,
     ) -> Result<(), AppErr> {
         let card = self.uow.card().get(id).await?;
-        if let Some(mut card) = card {
-            let (project_id, section_id) = self.resolve_assignment(project_id, section_id).await?;
-            card.title = title.to_owned();
-            card.description = description.to_owned();
-            card.deadline = deadline;
-            card.project_id = project_id;
-            card.section_id = section_id;
-            self.uow.card().save(card).await?;
-        }
-        Ok(())
-    }
+        if let Some(card) = card {
+            if card.deleted {
+                return Ok(());
+            }
 
-    pub async fn toggle(&mut self, id: Uuid) -> Result<(), AppErr> {
-        let card = self.uow.card().get(id).await?;
-        if let Some(mut card) = card {
-            card.completed = !card.completed;
-            self.uow.card().save(card).await?;
+            let (project_id, section_id) = self.resolve_assignment(project_id, section_id).await?;
+            let mut history = Vec::new();
+
+            if card.title != title {
+                history.push(CardHistory::ChangeTitle {
+                    title: title.to_owned(),
+                });
+            }
+
+            if card.description != description {
+                history.push(CardHistory::ChangeDescription {
+                    description: description.to_owned(),
+                });
+            }
+
+            if card.deadline != deadline {
+                history.push(CardHistory::ChangeDeadline { deadline });
+            }
+
+            if card.section_id != section_id {
+                history.push(CardHistory::BindSection { section_id });
+            }
+
+            if card.project_id != project_id {
+                history.push(CardHistory::BindProject { project_id });
+            }
+
+            if !history.is_empty() {
+                let mut repo = self.uow.card();
+                append_history_and_rebuild(&mut repo, id, history).await?;
+            }
         }
         Ok(())
     }
 
     pub async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
-        self.uow.card().delete(id).await
+        let card = self.uow.card().get(id).await?;
+        if let Some(card) = card {
+            if card.deleted {
+                return Ok(());
+            }
+
+            let mut repo = self.uow.card();
+            append_history_and_rebuild(&mut repo, id, vec![CardHistory::DeleteCard]).await?;
+        }
+
+        Ok(())
     }
 
     async fn resolve_assignment(

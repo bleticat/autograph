@@ -1,3 +1,4 @@
+use crate::card::adapters::seaorm::history::{load_history_map, to_card};
 use crate::card::entity::Card;
 use crate::project::entity::{Project, ProjectData, SectionWithCards};
 use crate::project::queries::ProjectQueries;
@@ -57,11 +58,18 @@ impl ProjectQueries for SeaOrmProjectQueries {
 
         let cards = card_model::Entity::find()
             .filter(card_model::Column::ProjectId.eq(project_id))
+            .filter(card_model::Column::Deleted.eq(false))
             .order_by_asc(Expr::cust("rowid"))
             .all(&self.conn)
-            .await?
+            .await?;
+        let card_ids = cards.iter().map(|card| card.id).collect::<Vec<_>>();
+        let history_map = load_history_map(&self.conn, &card_ids).await?;
+        let cards = cards
             .into_iter()
-            .map(to_card)
+            .map(|card| {
+                let history = history_map.get(&card.id).cloned().unwrap_or_default();
+                to_card(card, history)
+            })
             .collect::<Vec<_>>();
 
         let mut cards_without_section = Vec::new();
@@ -105,17 +113,5 @@ fn to_section(model: section_model::Model) -> Section {
         id: model.id,
         title: model.title,
         project_id: model.project_id,
-    }
-}
-
-fn to_card(model: card_model::Model) -> Card {
-    Card {
-        id: model.id,
-        title: model.title,
-        description: model.description,
-        deadline: model.deadline,
-        completed: model.completed,
-        project_id: model.project_id,
-        section_id: model.section_id,
     }
 }

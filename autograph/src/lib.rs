@@ -5,7 +5,7 @@ pub mod shared;
 
 pub use card::adapters::seaorm::queries::SeaOrmCardQueries;
 pub use card::commands::CardCommands;
-pub use card::entity::Card;
+pub use card::entity::{Card, CardHistory};
 pub use card::queries::CardQueries;
 pub use project::adapters::seaorm::queries::SeaOrmProjectQueries;
 pub use project::commands::ProjectCommands;

@@ -290,18 +290,6 @@ h1 {
   border: 1px solid rgba(146, 160, 214, 0.12);
 }
 
-.card-list li.completed span {
-  text-decoration: line-through;
-  opacity: 0.55;
-}
-
-.card-list li input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--accent-strong);
-}
-
 .card-list li span {
   flex: 1;
   min-width: 0;

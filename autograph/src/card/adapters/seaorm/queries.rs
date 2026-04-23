@@ -1,3 +1,4 @@
+use crate::card::adapters::seaorm::history::{load_history_map, to_card};
 use crate::card::entity::Card;
 use crate::card::queries::CardQueries;
 use crate::shared::adapters::seaorm::database::SeaOrmConnection;
@@ -31,6 +32,7 @@ impl CardQueries for SeaOrmCardQueries {
         section_id: QueryFilter<Uuid>,
     ) -> Result<Vec<Card>, AppErr> {
         let mut query = card_model::Entity::find()
+            .filter(card_model::Column::Deleted.eq(false))
             .order_by_asc(Expr::cust("rowid"))
             .limit(u64::from(limit))
             .offset(u64::from(offset));
@@ -58,18 +60,15 @@ impl CardQueries for SeaOrmCardQueries {
         };
 
         let cards = query.all(&self.conn).await?;
-        Ok(cards.into_iter().map(to_card).collect())
-    }
-}
+        let card_ids = cards.iter().map(|card| card.id).collect::<Vec<_>>();
+        let history_map = load_history_map(&self.conn, &card_ids).await?;
 
-fn to_card(model: card_model::Model) -> Card {
-    Card {
-        id: model.id,
-        title: model.title,
-        description: model.description,
-        deadline: model.deadline,
-        completed: model.completed,
-        project_id: model.project_id,
-        section_id: model.section_id,
+        Ok(cards
+            .into_iter()
+            .map(|card| {
+                let history = history_map.get(&card.id).cloned().unwrap_or_default();
+                to_card(card, history)
+            })
+            .collect())
     }
 }

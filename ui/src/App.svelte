@@ -109,11 +109,6 @@
     await loadProjectData();
   }
 
-  async function toggleCard(id) {
-    await invoke("toggle_card", { id });
-    await refreshSelectedView();
-  }
-
   async function deleteCard(id) {
     await invoke("delete_card", { id });
     await refreshSelectedView();
@@ -350,12 +345,7 @@
       {#if selectedProjectId === null}
         <ul class="card-list">
           {#each inboxCards as card (card.id)}
-            <li class:completed={card.completed}>
-              <input
-                type="checkbox"
-                checked={card.completed}
-                onchange={() => toggleCard(card.id)}
-              />
+            <li>
               <span>{card.title}</span>
               <button class="edit" onclick={() => openCardEditor(card)}>Edit</button>
               <button class="delete" onclick={() => deleteCard(card.id)}>&times;</button>
@@ -366,12 +356,7 @@
         {#if unsectionedCards.length > 0}
           <ul class="card-list">
             {#each unsectionedCards as card (card.id)}
-              <li class:completed={card.completed}>
-                <input
-                  type="checkbox"
-                  checked={card.completed}
-                  onchange={() => toggleCard(card.id)}
-                />
+              <li>
                 <span>{card.title}</span>
                 <button class="edit" onclick={() => openCardEditor(card)}>Edit</button>
                 <button class="delete" onclick={() => deleteCard(card.id)}>&times;</button>
@@ -394,12 +379,7 @@
               </div>
               <ul class="card-list">
                 {#each unsectionedCards as card (card.id)}
-                  <li class:completed={card.completed}>
-                    <input
-                      type="checkbox"
-                      checked={card.completed}
-                      onchange={() => toggleCard(card.id)}
-                    />
+                  <li>
                     <span>{card.title}</span>
                     <button class="edit" onclick={() => openCardEditor(card)}>Edit</button>
                     <button class="delete" onclick={() => deleteCard(card.id)}>&times;</button>
@@ -426,12 +406,7 @@
               {#if group.cards.length > 0}
                 <ul class="card-list">
                   {#each group.cards as card (card.id)}
-                    <li class:completed={card.completed}>
-                      <input
-                        type="checkbox"
-                        checked={card.completed}
-                        onchange={() => toggleCard(card.id)}
-                      />
+                    <li>
                       <span>{card.title}</span>
                       <button class="edit" onclick={() => openCardEditor(card)}>Edit</button>
                       <button class="delete" onclick={() => deleteCard(card.id)}>&times;</button>

@@ -1,6 +1,8 @@
+use autograph::shared::ports::repository::Repository;
 use autograph::{
-    Card, CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, QueryFilter,
-    SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
+    Card, CardCommands, CardHistory, CardQueries, Database, DatabaseBuilder, ProjectCommands,
+    QueryFilter, SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
+    UnitOfWork,
 };
 use chrono::NaiveDate;
 use uuid::Uuid;
@@ -60,6 +62,12 @@ async fn cards_with_deadline(
         .unwrap()
 }
 
+async fn stored_card(db: &DatabaseAdapter, id: Uuid) -> Option<Card> {
+    db.begin(async |uow| uow.card().get(id).await)
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
 async fn empty_database_returns_no_cards() {
     let db = fresh_db().await;
@@ -78,9 +86,16 @@ async fn add_single_card() {
     assert_eq!(cards[0].title, "buy milk");
     assert_eq!(cards[0].description, "");
     assert_eq!(cards[0].deadline, None);
-    assert!(!cards[0].completed);
+    assert!(!cards[0].deleted);
     assert_eq!(cards[0].project_id, None);
     assert_eq!(cards[0].section_id, None);
+    assert_eq!(
+        cards[0].history,
+        vec![CardHistory::CreateCard {
+            id: cards[0].id,
+            title: "buy milk".to_owned(),
+        }]
+    );
 }
 
 #[tokio::test]
@@ -122,40 +137,45 @@ async fn card_filter_respects_limit_and_offset() {
 }
 
 #[tokio::test]
-async fn toggle_marks_completed() {
+async fn delete_marks_card_deleted_and_hides_it_from_queries() {
     let db = fresh_db().await;
     db.begin(async |uow| CardCommands::new(uow).add("card").await)
         .await
         .unwrap();
     let id = all_cards(&db).await[0].id;
 
-    db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
+    db.begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await
         .unwrap();
-    let cards = all_cards(&db).await;
-    assert!(cards[0].completed);
+    assert!(all_cards(&db).await.is_empty());
+
+    let card = stored_card(&db, id).await.unwrap();
+    assert!(card.deleted);
+    assert_eq!(card.history.last(), Some(&CardHistory::DeleteCard));
 }
 
 #[tokio::test]
-async fn toggle_twice_restores_incomplete() {
+async fn delete_twice_is_noop() {
     let db = fresh_db().await;
     db.begin(async |uow| CardCommands::new(uow).add("card").await)
         .await
         .unwrap();
     let id = all_cards(&db).await[0].id;
 
-    db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
+    db.begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await
         .unwrap();
-    db.begin(async |uow| CardCommands::new(uow).toggle(id).await)
+    db.begin(async |uow| CardCommands::new(uow).delete(id).await)
         .await
         .unwrap();
-    let cards = all_cards(&db).await;
-    assert!(!cards[0].completed);
+
+    let card = stored_card(&db, id).await.unwrap();
+    assert!(card.deleted);
+    assert_eq!(card.history.len(), 2);
 }
 
 #[tokio::test]
-async fn delete_removes_card() {
+async fn delete_hides_card_from_card_queries() {
     let db = fresh_db().await;
     db.begin(async |uow| CardCommands::new(uow).add("to delete").await)
         .await
@@ -190,9 +210,9 @@ async fn delete_only_target_card() {
 }
 
 #[tokio::test]
-async fn toggle_nonexistent_id_is_noop() {
+async fn delete_nonexistent_id_is_noop_on_empty_database() {
     let db = fresh_db().await;
-    db.begin(async |uow| CardCommands::new(uow).toggle(Uuid::new_v4()).await)
+    db.begin(async |uow| CardCommands::new(uow).delete(Uuid::new_v4()).await)
         .await
         .unwrap();
     assert!(all_cards(&db).await.is_empty());
@@ -249,6 +269,32 @@ async fn edit_updates_card_fields() {
     );
     assert_eq!(cards[0].project_id, None);
     assert_eq!(cards[0].section_id, None);
+    assert_eq!(cards[0].history.len(), 4);
+    assert_eq!(
+        cards[0].history[0],
+        CardHistory::CreateCard {
+            id,
+            title: "draft".to_owned(),
+        }
+    );
+    assert_eq!(
+        cards[0].history[1],
+        CardHistory::ChangeTitle {
+            title: "final title".to_owned(),
+        }
+    );
+    assert_eq!(
+        cards[0].history[2],
+        CardHistory::ChangeDescription {
+            description: "expanded card details".to_owned(),
+        }
+    );
+    assert_eq!(
+        cards[0].history[3],
+        CardHistory::ChangeDeadline {
+            deadline: Some(deadline),
+        }
+    );
 }
 
 #[tokio::test]
@@ -321,6 +367,7 @@ async fn add_card_with_section_assigns_project_and_section() {
     assert_eq!(cards[0].title, "fix bug");
     assert_eq!(cards[0].project_id, Some(project_id));
     assert_eq!(cards[0].section_id, Some(section_id));
+    assert_eq!(cards[0].history.len(), 3);
 }
 
 #[tokio::test]
@@ -441,6 +488,10 @@ async fn deleting_section_keeps_cards_in_project() {
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].project_id, Some(project_id));
     assert_eq!(cards[0].section_id, None);
+    assert_eq!(
+        cards[0].history.last(),
+        Some(&CardHistory::BindSection { section_id: None })
+    );
 }
 
 #[tokio::test]
@@ -474,9 +525,20 @@ async fn full_workflow() {
     let cards = all_cards(&db).await;
     let middle_card_id = cards[1].id;
     let last_card_id = cards[2].id;
-    db.begin(async |uow| CardCommands::new(uow).toggle(middle_card_id).await)
-        .await
-        .unwrap();
+    db.begin(async |uow| {
+        CardCommands::new(uow)
+            .edit(
+                middle_card_id,
+                "write tests thoroughly",
+                "cover card history rebuilds",
+                None,
+                None,
+                None,
+            )
+            .await
+    })
+    .await
+    .unwrap();
 
     db.begin(async |uow| CardCommands::new(uow).delete(last_card_id).await)
         .await
@@ -487,9 +549,10 @@ async fn full_workflow() {
     assert_eq!(cards[0].title, "buy groceries");
     assert_eq!(cards[0].description, "");
     assert_eq!(cards[0].deadline, None);
-    assert!(!cards[0].completed);
-    assert_eq!(cards[1].title, "write tests");
-    assert_eq!(cards[1].description, "");
+    assert!(!cards[0].deleted);
+    assert_eq!(cards[1].title, "write tests thoroughly");
+    assert_eq!(cards[1].description, "cover card history rebuilds");
     assert_eq!(cards[1].deadline, None);
-    assert!(cards[1].completed);
+    assert!(!cards[1].deleted);
+    assert_eq!(cards[1].history.len(), 3);
 }
