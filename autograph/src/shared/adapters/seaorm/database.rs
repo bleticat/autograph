@@ -78,8 +78,15 @@ impl Database for SeaOrmDatabase {
     ) -> Result<T, AppErr> {
         let tx = self.conn.begin().await?;
         let mut uow = SeaOrmUnitOfWork::new(tx);
-        let val = f(&mut uow).await?;
-        uow.commit().await?;
-        Ok(val)
+        match f(&mut uow).await {
+            Ok(val) => {
+                uow.commit().await?;
+                Ok(val)
+            }
+            Err(err) => {
+                let _ = uow.rollback().await;
+                Err(err)
+            }
+        }
     }
 }

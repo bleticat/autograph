@@ -45,4 +45,9 @@ impl UnitOfWork for SeaOrmUnitOfWork {
         self.tx.commit().await?;
         Ok(())
     }
+
+    async fn rollback(self) -> Result<(), AppErr> {
+        self.tx.rollback().await?;
+        Ok(())
+    }
 }
