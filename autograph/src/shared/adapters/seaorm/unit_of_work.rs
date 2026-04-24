@@ -1,3 +1,4 @@
+use crate::card::adapters::seaorm::history_repository::SeaOrmCardHistoryRepository;
 use crate::card::adapters::seaorm::repository::SeaOrmCardRepository;
 use crate::project::adapters::seaorm::repository::SeaOrmProjectRepository;
 use crate::section::adapters::seaorm::repository::SeaOrmSectionRepository;
@@ -24,6 +25,10 @@ impl UnitOfWork for SeaOrmUnitOfWork {
         = SeaOrmCardRepository<'a>
     where
         Self: 'a;
+    type CardHistoryRepository<'a>
+        = SeaOrmCardHistoryRepository<'a>
+    where
+        Self: 'a;
     type SectionRepository<'a>
         = SeaOrmSectionRepository<'a>
     where
@@ -35,6 +40,10 @@ impl UnitOfWork for SeaOrmUnitOfWork {
 
     fn card(&mut self) -> SeaOrmCardRepository<'_> {
         SeaOrmCardRepository::new(&self.tx)
+    }
+
+    fn card_history(&mut self) -> SeaOrmCardHistoryRepository<'_> {
+        SeaOrmCardHistoryRepository::new(&self.tx)
     }
 
     fn section(&mut self) -> SeaOrmSectionRepository<'_> {

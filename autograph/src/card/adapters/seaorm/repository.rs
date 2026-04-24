@@ -1,5 +1,6 @@
 use crate::card::adapters::seaorm::history::{load_history, serialize_history, to_card};
 use crate::card::entity::Card;
+use crate::card::history_repository::CardHistoryRepository;
 use crate::card::repository::CardEventRepository;
 use crate::shared::adapters::seaorm::models::card as card_model;
 use crate::shared::adapters::seaorm::models::card_history as card_history_model;
@@ -62,7 +63,7 @@ impl<'a> Repository<Card> for SeaOrmCardRepository<'a> {
     }
 }
 
-impl<'a> CardEventRepository for SeaOrmCardRepository<'a> {
+impl<'a> CardHistoryRepository for SeaOrmCardRepository<'a> {
     async fn get_history(
         &mut self,
         id: Uuid,
@@ -77,7 +78,7 @@ impl<'a> CardEventRepository for SeaOrmCardRepository<'a> {
     ) -> Result<(), AppErr> {
         let mut history = load_history(self.tx, id).await?;
         history.extend(items);
-        let items = serialize_history(&history)?;
+        let serialized = serialize_history(&history)?;
 
         if card_history_model::Entity::find_by_id(id)
             .one(self.tx)
@@ -86,14 +87,14 @@ impl<'a> CardEventRepository for SeaOrmCardRepository<'a> {
         {
             card_history_model::ActiveModel {
                 card_id: Set(id),
-                items: Set(items),
+                items: Set(serialized),
             }
             .update(self.tx)
             .await?;
         } else {
             card_history_model::ActiveModel {
                 card_id: Set(id),
-                items: Set(items),
+                items: Set(serialized),
             }
             .insert(self.tx)
             .await?;
@@ -101,7 +102,9 @@ impl<'a> CardEventRepository for SeaOrmCardRepository<'a> {
 
         Ok(())
     }
+}
 
+impl<'a> CardEventRepository for SeaOrmCardRepository<'a> {
     async fn get_by_section(&mut self, section_id: Uuid) -> Result<Vec<Card>, AppErr> {
         let cards = card_model::Entity::find()
             .filter(card_model::Column::SectionId.eq(section_id))
