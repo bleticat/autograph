@@ -11,7 +11,7 @@ pub trait UnitOfWork: Send {
     type ProjectRepository<'a>: Repository<Project> + Send
     where
         Self: 'a;
-    type CardRepository<'a>: Repository<Card> + CardEventRepository + CardHistoryRepository + Send
+    type CardRepository<'a>: Repository<Card> + CardEventRepository + Send
     where
         Self: 'a;
     type CardHistoryRepository<'a>: CardHistoryRepository + Send

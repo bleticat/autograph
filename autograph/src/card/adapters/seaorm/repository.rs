@@ -1,9 +1,7 @@
-use crate::card::adapters::seaorm::history::{load_history, serialize_history, to_card};
+use crate::card::adapters::seaorm::history::{load_history, to_card};
 use crate::card::entity::Card;
-use crate::card::history_repository::CardHistoryRepository;
 use crate::card::repository::CardEventRepository;
 use crate::shared::adapters::seaorm::models::card as card_model;
-use crate::shared::adapters::seaorm::models::card_history as card_history_model;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
@@ -59,47 +57,6 @@ impl<'a> Repository<Card> for SeaOrmCardRepository<'a> {
 
     async fn delete(&mut self, id: Uuid) -> Result<(), AppErr> {
         card_model::Entity::delete_by_id(id).exec(self.tx).await?;
-        Ok(())
-    }
-}
-
-impl<'a> CardHistoryRepository for SeaOrmCardRepository<'a> {
-    async fn get_history(
-        &mut self,
-        id: Uuid,
-    ) -> Result<Vec<crate::card::entity::CardHistory>, AppErr> {
-        load_history(self.tx, id).await
-    }
-
-    async fn append_history(
-        &mut self,
-        id: Uuid,
-        items: Vec<crate::card::entity::CardHistory>,
-    ) -> Result<(), AppErr> {
-        let mut history = load_history(self.tx, id).await?;
-        history.extend(items);
-        let serialized = serialize_history(&history)?;
-
-        if card_history_model::Entity::find_by_id(id)
-            .one(self.tx)
-            .await?
-            .is_some()
-        {
-            card_history_model::ActiveModel {
-                card_id: Set(id),
-                items: Set(serialized),
-            }
-            .update(self.tx)
-            .await?;
-        } else {
-            card_history_model::ActiveModel {
-                card_id: Set(id),
-                items: Set(serialized),
-            }
-            .insert(self.tx)
-            .await?;
-        }
-
         Ok(())
     }
 }

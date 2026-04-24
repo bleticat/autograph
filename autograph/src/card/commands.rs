@@ -1,10 +1,21 @@
 use crate::card::entity::{Card, CardHistory};
-use crate::card::repository::append_history_and_rebuild;
+use crate::card::history_repository::CardHistoryRepository;
 use crate::shared::error::AppErr;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
+
+pub async fn append_history_and_rebuild<U: UnitOfWork>(
+    uow: &mut U,
+    id: Uuid,
+    items: Vec<CardHistory>,
+) -> Result<Card, AppErr> {
+    uow.card_history().append_history(id, items).await?;
+    let history = uow.card_history().get_history(id).await?;
+    let card = Card::apply(history)?;
+    uow.card().save(card).await
+}
 
 pub struct CardCommands<'a, U: UnitOfWork> {
     uow: &'a mut U,
@@ -59,8 +70,7 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
             history.push(CardHistory::BindSection { section_id });
         }
 
-        let mut repo = self.uow.card();
-        append_history_and_rebuild(&mut repo, id, history).await
+        append_history_and_rebuild(self.uow, id, history).await
     }
 
     pub async fn edit(
@@ -106,8 +116,7 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
             }
 
             if !history.is_empty() {
-                let mut repo = self.uow.card();
-                append_history_and_rebuild(&mut repo, id, history).await?;
+                append_history_and_rebuild(self.uow, id, history).await?;
             }
         }
         Ok(())
@@ -120,8 +129,7 @@ impl<'a, U: UnitOfWork> CardCommands<'a, U> {
                 return Ok(());
             }
 
-            let mut repo = self.uow.card();
-            append_history_and_rebuild(&mut repo, id, vec![CardHistory::DeleteCard]).await?;
+            append_history_and_rebuild(self.uow, id, vec![CardHistory::DeleteCard]).await?;
         }
 
         Ok(())
