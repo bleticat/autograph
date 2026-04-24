@@ -30,24 +30,19 @@ impl<'a> CardHistoryRepository for SeaOrmCardHistoryRepository<'a> {
         history.extend(items);
         let serialized = serialize_history(&history)?;
 
+        let active_model = card_history_model::ActiveModel {
+            card_id: Set(id),
+            items: Set(serialized),
+        };
+
         if card_history_model::Entity::find_by_id(id)
             .one(self.tx)
             .await?
             .is_some()
         {
-            card_history_model::ActiveModel {
-                card_id: Set(id),
-                items: Set(serialized),
-            }
-            .update(self.tx)
-            .await?;
+            active_model.update(self.tx).await?;
         } else {
-            card_history_model::ActiveModel {
-                card_id: Set(id),
-                items: Set(serialized),
-            }
-            .insert(self.tx)
-            .await?;
+            active_model.insert(self.tx).await?;
         }
 
         Ok(())
