@@ -8,7 +8,7 @@ pub enum AppErr {
 }
 
 impl fmt::Display for AppErr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AppErr::SeaOrm(e) => write!(f, "database error: {e}"),
             AppErr::Parse(e) => write!(f, "parse error: {e}"),
@@ -18,6 +18,8 @@ impl fmt::Display for AppErr {
 }
 
 impl std::error::Error for AppErr {
+    // `std::error::Error::source` requires source errors to be `'static`
+    // behind the trait object, so this lifetime is part of the trait contract.
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             AppErr::SeaOrm(e) => Some(e),

@@ -7,10 +7,10 @@ pub trait Database: Sync {
     type Uow: UnitOfWork;
 
     fn conn(&self) -> Self::Conn;
-    fn begin<'a, T: Send + 'a>(
-        &'a self,
-        f: impl AsyncFnOnce(&mut Self::Uow) -> Result<T, AppErr> + Send + 'a,
-    ) -> impl Future<Output = Result<T, AppErr>> + 'a;
+    fn begin<T: Send>(
+        &self,
+        f: impl AsyncFnOnce(&mut Self::Uow) -> Result<T, AppErr> + Send,
+    ) -> impl Future<Output = Result<T, AppErr>>;
 }
 
 pub trait DatabaseBuilder: Sized {

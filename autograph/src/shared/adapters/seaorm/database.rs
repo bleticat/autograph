@@ -72,9 +72,9 @@ impl Database for SeaOrmDatabase {
         self.conn.clone()
     }
 
-    async fn begin<'a, T: Send + 'a>(
-        &'a self,
-        f: impl AsyncFnOnce(&mut SeaOrmUnitOfWork) -> Result<T, AppErr> + Send + 'a,
+    async fn begin<T: Send>(
+        &self,
+        f: impl AsyncFnOnce(&mut SeaOrmUnitOfWork) -> Result<T, AppErr> + Send,
     ) -> Result<T, AppErr> {
         let tx = self.conn.begin().await?;
         let mut uow = SeaOrmUnitOfWork::new(tx);

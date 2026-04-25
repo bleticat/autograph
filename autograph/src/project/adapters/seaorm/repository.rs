@@ -5,17 +5,24 @@ use crate::shared::ports::repository::Repository;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use uuid::Uuid;
 
-pub struct SeaOrmProjectRepository<'a> {
-    tx: &'a DatabaseTransaction,
+/// Repository scoped to an active SeaORM transaction.
+///
+/// `'tx` is explicit because the repository stores `&DatabaseTransaction`; it
+/// must not outlive the transaction used by its queries.
+pub struct SeaOrmProjectRepository<'tx> {
+    tx: &'tx DatabaseTransaction,
 }
 
-impl<'a> SeaOrmProjectRepository<'a> {
-    pub fn new(tx: &'a DatabaseTransaction) -> Self {
+// The impl names `'tx` so `new` can return a repository tied to the incoming
+// transaction borrow.
+impl<'tx> SeaOrmProjectRepository<'tx> {
+    pub fn new(tx: &'tx DatabaseTransaction) -> Self {
         Self { tx }
     }
 }
 
-impl<'a> Repository<Project> for SeaOrmProjectRepository<'a> {
+// `'_` makes the trait impl cover repositories tied to any transaction borrow.
+impl Repository<Project> for SeaOrmProjectRepository<'_> {
     async fn get(&mut self, id: Uuid) -> Result<Option<Project>, AppErr> {
         Ok(project_model::Entity::find_by_id(id)
             .one(self.tx)

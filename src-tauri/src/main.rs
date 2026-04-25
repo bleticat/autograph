@@ -39,6 +39,8 @@ struct AppState {
     db: DatabaseAdapter,
 }
 
+// Tauri injects `State<'_, AppState>` per command invocation. Each `'_` below
+// is that request-scoped borrow of the managed application state.
 #[tauri::command]
 async fn filter_cards(
     limit: u32,

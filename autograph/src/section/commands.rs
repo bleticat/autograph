@@ -4,12 +4,18 @@ use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
 use uuid::Uuid;
 
-pub struct SectionCommands<'a, U: UnitOfWork> {
-    uow: &'a mut U,
+/// Command facade scoped to a borrowed unit of work.
+///
+/// `'uow` is explicit because the facade stores `&mut U`; this prevents command
+/// operations from outliving the transaction they mutate.
+pub struct SectionCommands<'uow, U: UnitOfWork> {
+    uow: &'uow mut U,
 }
 
-impl<'a, U: UnitOfWork> SectionCommands<'a, U> {
-    pub fn new(uow: &'a mut U) -> Self {
+// The impl names `'uow` so `new` can return a facade tied to the incoming
+// mutable unit-of-work borrow.
+impl<'uow, U: UnitOfWork> SectionCommands<'uow, U> {
+    pub fn new(uow: &'uow mut U) -> Self {
         Self { uow }
     }
 

@@ -16,19 +16,23 @@ impl SeaOrmUnitOfWork {
 }
 
 impl UnitOfWork for SeaOrmUnitOfWork {
-    type ProjectRepository<'a>
-        = SeaOrmProjectRepository<'a>
+    // These lifetimes mirror the UnitOfWork GAT contract: every returned
+    // repository borrows this unit of work's transaction.
+    type ProjectRepository<'repo>
+        = SeaOrmProjectRepository<'repo>
     where
-        Self: 'a;
-    type CardRepository<'a>
-        = SeaOrmCardRepository<'a>
+        Self: 'repo;
+    type CardRepository<'repo>
+        = SeaOrmCardRepository<'repo>
     where
-        Self: 'a;
-    type SectionRepository<'a>
-        = SeaOrmSectionRepository<'a>
+        Self: 'repo;
+    type SectionRepository<'repo>
+        = SeaOrmSectionRepository<'repo>
     where
-        Self: 'a;
+        Self: 'repo;
 
+    // The `'_` placeholders are the method-call borrows used to build
+    // transaction-scoped repositories.
     fn project(&mut self) -> SeaOrmProjectRepository<'_> {
         SeaOrmProjectRepository::new(&self.tx)
     }

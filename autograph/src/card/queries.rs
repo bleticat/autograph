@@ -13,9 +13,9 @@ pub trait CardQueries {
         deadline: QueryFilter<DateTime<Utc>>,
         project_id: QueryFilter<Uuid>,
         section_id: QueryFilter<Uuid>,
-    ) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send + '_;
+    ) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send;
 
-    fn get_all_cards(&self) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send + '_ {
+    fn get_all_cards(&self) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send {
         self.filter(
             u32::MAX,
             0,
@@ -25,9 +25,7 @@ pub trait CardQueries {
         )
     }
 
-    fn get_cards_without_project(
-        &self,
-    ) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send + '_ {
+    fn get_cards_without_project(&self) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send {
         self.filter(
             u32::MAX,
             0,
@@ -40,7 +38,7 @@ pub trait CardQueries {
     fn get_cards_by_project(
         &self,
         project_id: Uuid,
-    ) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send + '_ {
+    ) -> impl Future<Output = Result<Vec<Card>, AppErr>> + Send {
         self.filter(
             u32::MAX,
             0,

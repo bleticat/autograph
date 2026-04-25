@@ -8,20 +8,20 @@ pub trait ProjectQueries {
         &self,
         limit: u32,
         offset: u32,
-    ) -> impl Future<Output = Result<Vec<Project>, AppErr>> + Send + '_;
+    ) -> impl Future<Output = Result<Vec<Project>, AppErr>> + Send;
     fn get_project(
         &self,
         project_id: Uuid,
-    ) -> impl Future<Output = Result<Option<ProjectData>, AppErr>> + Send + '_;
+    ) -> impl Future<Output = Result<Option<ProjectData>, AppErr>> + Send;
 
-    fn get_all_projects(&self) -> impl Future<Output = Result<Vec<Project>, AppErr>> + Send + '_ {
+    fn get_all_projects(&self) -> impl Future<Output = Result<Vec<Project>, AppErr>> + Send {
         self.filter(u32::MAX, 0)
     }
 
     fn get_project_data(
         &self,
         project_id: Uuid,
-    ) -> impl Future<Output = Result<Option<ProjectData>, AppErr>> + Send + '_ {
+    ) -> impl Future<Output = Result<Option<ProjectData>, AppErr>> + Send {
         self.get_project(project_id)
     }
 }

@@ -6,16 +6,21 @@ use crate::shared::ports::repository::Repository;
 use std::future::Future;
 
 pub trait UnitOfWork: Send {
-    type ProjectRepository<'a>: Repository<Project> + Send
+    // Repository GAT lifetimes are the borrow of `self` used to create each
+    // repository; the `Self: 'repo` bounds keep repositories scoped to the unit
+    // of work they borrow from.
+    type ProjectRepository<'repo>: Repository<Project> + Send
     where
-        Self: 'a;
-    type CardRepository<'a>: Repository<Card> + Send
+        Self: 'repo;
+    type CardRepository<'repo>: Repository<Card> + Send
     where
-        Self: 'a;
-    type SectionRepository<'a>: Repository<Section> + Send
+        Self: 'repo;
+    type SectionRepository<'repo>: Repository<Section> + Send
     where
-        Self: 'a;
+        Self: 'repo;
 
+    // Each `'_` placeholder below is the per-call `&mut self` borrow that feeds
+    // the corresponding repository GAT.
     fn project(&mut self) -> Self::ProjectRepository<'_>;
     fn card(&mut self) -> Self::CardRepository<'_>;
     fn section(&mut self) -> Self::SectionRepository<'_>;
