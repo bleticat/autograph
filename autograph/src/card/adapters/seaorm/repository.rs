@@ -5,6 +5,8 @@ use crate::shared::ports::repository::Repository;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
 use uuid::Uuid;
 
+// 'a ties the repository to the borrowed DatabaseTransaction, ensuring the
+// repository cannot outlive the transaction it uses to execute queries.
 pub struct SeaOrmCardRepository<'a> {
     tx: &'a DatabaseTransaction,
 }

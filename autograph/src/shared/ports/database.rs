@@ -7,6 +7,8 @@ pub trait Database: Sync {
     type Uow: UnitOfWork;
 
     fn conn(&self) -> Self::Conn;
+    // 'a ties the closure and the returned future to the lifetime of &'a self,
+    // ensuring neither the closure nor the future outlives the database connection.
     fn begin<'a, T: Send + 'a>(
         &'a self,
         f: impl AsyncFnOnce(&mut Self::Uow) -> Result<T, AppErr> + Send + 'a,

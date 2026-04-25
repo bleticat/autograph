@@ -18,6 +18,8 @@ impl fmt::Display for AppErr {
 }
 
 impl std::error::Error for AppErr {
+    // 'static is required by the std::error::Error trait signature; it means
+    // the returned source error must own all its data (or be a 'static reference).
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             AppErr::SeaOrm(e) => Some(e),

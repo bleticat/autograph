@@ -6,6 +6,8 @@ use crate::shared::ports::repository::Repository;
 use std::future::Future;
 
 pub trait UnitOfWork: Send {
+    // 'a is a generic associated type lifetime that lets the returned repository
+    // borrow from &'a mut self; `where Self: 'a` guarantees self outlives 'a.
     type ProjectRepository<'a>: Repository<Project> + Send
     where
         Self: 'a;

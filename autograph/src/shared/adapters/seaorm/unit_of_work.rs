@@ -16,6 +16,8 @@ impl SeaOrmUnitOfWork {
 }
 
 impl UnitOfWork for SeaOrmUnitOfWork {
+    // 'a is the GAT lifetime that lets each repository borrow from &'a mut self
+    // (specifically &self.tx); `where Self: 'a` ensures self outlives 'a.
     type ProjectRepository<'a>
         = SeaOrmProjectRepository<'a>
     where

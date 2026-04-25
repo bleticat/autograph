@@ -4,6 +4,8 @@ use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
 use uuid::Uuid;
 
+// 'a ties the command handler to the borrowed UnitOfWork, ensuring the handler
+// cannot outlive the transaction context it operates on.
 pub struct ProjectCommands<'a, U: UnitOfWork> {
     uow: &'a mut U,
 }

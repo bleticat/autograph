@@ -72,6 +72,8 @@ impl Database for SeaOrmDatabase {
         self.conn.clone()
     }
 
+    // 'a ties the closure and the returned future to the lifetime of &'a self,
+    // ensuring neither the closure nor the future outlives the database connection.
     async fn begin<'a, T: Send + 'a>(
         &'a self,
         f: impl AsyncFnOnce(&mut SeaOrmUnitOfWork) -> Result<T, AppErr> + Send + 'a,
