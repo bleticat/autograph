@@ -66,14 +66,8 @@ async fn add_card(
 ) -> TauriResult<()> {
     let project_id = parse_optional_uuid(project_id, "project_id")?;
     let section_id = parse_optional_uuid(section_id, "section_id")?;
-    state
-        .db
-        .begin(async |uow| {
-            CardCommands::new(uow)
-                .add_with_assignment(&title, project_id, section_id)
-                .await?;
-            Ok(())
-        })
+    CardCommands::new(&state.db)
+        .add_with_assignment(&title, project_id, section_id)
         .await?;
     Ok(())
 }
@@ -81,20 +75,14 @@ async fn add_card(
 #[tauri::command]
 async fn toggle_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
-    state
-        .db
-        .begin(async |uow| CardCommands::new(uow).toggle(id).await)
-        .await?;
+    CardCommands::new(&state.db).toggle(id).await?;
     Ok(())
 }
 
 #[tauri::command]
 async fn delete_card(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "card id")?;
-    state
-        .db
-        .begin(async |uow| CardCommands::new(uow).delete(id).await)
-        .await?;
+    CardCommands::new(&state.db).delete(id).await?;
     Ok(())
 }
 
@@ -112,13 +100,8 @@ async fn update_card(
     let deadline = parse_optional_date(deadline.as_deref())?;
     let project_id = parse_optional_uuid(project_id, "project_id")?;
     let section_id = parse_optional_uuid(section_id, "section_id")?;
-    state
-        .db
-        .begin(async |uow| {
-            CardCommands::new(uow)
-                .edit(id, &title, &description, deadline, project_id, section_id)
-                .await
-        })
+    CardCommands::new(&state.db)
+        .edit(id, &title, &description, deadline, project_id, section_id)
         .await?;
     Ok(())
 }
@@ -143,13 +126,7 @@ async fn get_project(
 
 #[tauri::command]
 async fn add_project(title: String, state: State<'_, AppState>) -> TauriResult<()> {
-    state
-        .db
-        .begin(async |uow| {
-            ProjectCommands::new(uow).add(&title).await?;
-            Ok(())
-        })
-        .await?;
+    ProjectCommands::new(&state.db).add(&title).await?;
     Ok(())
 }
 
@@ -172,12 +149,8 @@ async fn add_section(
     state: State<'_, AppState>,
 ) -> TauriResult<()> {
     let project_id = parse_uuid(&project_id, "project_id")?;
-    state
-        .db
-        .begin(async |uow| {
-            SectionCommands::new(uow).add(&title, project_id).await?;
-            Ok(())
-        })
+    SectionCommands::new(&state.db)
+        .add(&title, project_id)
         .await?;
     Ok(())
 }
@@ -185,20 +158,14 @@ async fn add_section(
 #[tauri::command]
 async fn update_section(id: String, title: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "section id")?;
-    state
-        .db
-        .begin(async |uow| SectionCommands::new(uow).edit(id, &title).await)
-        .await?;
+    SectionCommands::new(&state.db).edit(id, &title).await?;
     Ok(())
 }
 
 #[tauri::command]
 async fn delete_section(id: String, state: State<'_, AppState>) -> TauriResult<()> {
     let id = parse_uuid(&id, "section id")?;
-    state
-        .db
-        .begin(async |uow| SectionCommands::new(uow).delete(id).await)
-        .await?;
+    SectionCommands::new(&state.db).delete(id).await?;
     Ok(())
 }
 
