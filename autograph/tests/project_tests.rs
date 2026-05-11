@@ -1,15 +1,12 @@
 use autograph::{
     CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, ProjectQueries,
-    QueryFilter, SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SeaOrmProjectQueries,
-    SectionCommands,
+    QueryFilter, SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
 };
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
 type DatabaseAdapter = SeaOrmDatabase;
 type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
-type CardQueryAdapter = SeaOrmCardQueries;
-type ProjectQueryAdapter = SeaOrmProjectQueries;
 
 async fn fresh_db() -> DatabaseAdapter {
     DatabaseBuilderAdapter::open(":memory:")
@@ -20,14 +17,11 @@ async fn fresh_db() -> DatabaseAdapter {
 }
 
 async fn all_projects(db: &DatabaseAdapter) -> Vec<autograph::Project> {
-    ProjectQueryAdapter::new(db.conn())
-        .filter(DEFAULT_LIMIT, 0)
-        .await
-        .unwrap()
+    db.project().filter(DEFAULT_LIMIT, 0).await.unwrap()
 }
 
 async fn get_project(db: &DatabaseAdapter, project_id: Uuid) -> autograph::ProjectData {
-    ProjectQueryAdapter::new(db.conn())
+    db.project()
         .get_project(project_id)
         .await
         .unwrap()
@@ -35,7 +29,7 @@ async fn get_project(db: &DatabaseAdapter, project_id: Uuid) -> autograph::Proje
 }
 
 async fn cards_without_project(db: &DatabaseAdapter) -> Vec<autograph::Card> {
-    CardQueryAdapter::new(db.conn())
+    db.card()
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -48,7 +42,7 @@ async fn cards_without_project(db: &DatabaseAdapter) -> Vec<autograph::Card> {
 }
 
 async fn cards_by_project(db: &DatabaseAdapter, project_id: Uuid) -> Vec<autograph::Card> {
-    CardQueryAdapter::new(db.conn())
+    db.card()
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -111,10 +105,7 @@ async fn project_filter_respects_limit_and_offset() {
         .unwrap();
     }
 
-    let projects = ProjectQueryAdapter::new(db.conn())
-        .filter(1, 1)
-        .await
-        .unwrap();
+    let projects = db.project().filter(1, 1).await.unwrap();
     assert_eq!(projects.len(), 1);
     assert_eq!(projects[0].title, "Beta");
 }

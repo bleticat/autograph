@@ -1,5 +1,8 @@
 use super::migrator::Migrator;
 use super::unit_of_work::SeaOrmUnitOfWork;
+use crate::card::adapters::seaorm::queries::SeaOrmCardQueries;
+use crate::project::adapters::seaorm::queries::SeaOrmProjectQueries;
+use crate::section::adapters::seaorm::queries::SeaOrmSectionQueries;
 use crate::shared::error::AppErr;
 use crate::shared::ports::database::{Database, DatabaseBuilder};
 use crate::shared::ports::unit_of_work::UnitOfWork;
@@ -65,11 +68,30 @@ impl DatabaseBuilder for SeaOrmDatabaseBuilder {
 }
 
 impl Database for SeaOrmDatabase {
-    type Conn = SeaOrmConnection;
     type Uow = SeaOrmUnitOfWork;
+    type CardQueries<'db>
+        = SeaOrmCardQueries
+    where
+        Self: 'db;
+    type ProjectQueries<'db>
+        = SeaOrmProjectQueries
+    where
+        Self: 'db;
+    type SectionQueries<'db>
+        = SeaOrmSectionQueries
+    where
+        Self: 'db;
 
-    fn conn(&self) -> SeaOrmConnection {
-        self.conn.clone()
+    fn card(&self) -> SeaOrmCardQueries {
+        SeaOrmCardQueries::new(self.conn.clone())
+    }
+
+    fn project(&self) -> SeaOrmProjectQueries {
+        SeaOrmProjectQueries::new(self.conn.clone())
+    }
+
+    fn section(&self) -> SeaOrmSectionQueries {
+        SeaOrmSectionQueries::new(self.conn.clone())
     }
 
     async fn begin<T: Send>(

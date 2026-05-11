@@ -1,13 +1,12 @@
 use autograph::{
     Database, DatabaseBuilder, ProjectCommands, QueryFilter, SeaOrmDatabase, SeaOrmDatabaseBuilder,
-    SeaOrmSectionQueries, SectionCommands, SectionQueries,
+    SectionCommands, SectionQueries,
 };
 use uuid::Uuid;
 
 const DEFAULT_LIMIT: u32 = 100;
 type DatabaseAdapter = SeaOrmDatabase;
 type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
-type SectionQueryAdapter = SeaOrmSectionQueries;
 
 async fn fresh_db() -> DatabaseAdapter {
     DatabaseBuilderAdapter::open(":memory:")
@@ -18,7 +17,7 @@ async fn fresh_db() -> DatabaseAdapter {
 }
 
 async fn sections(db: &DatabaseAdapter, project_id: QueryFilter<Uuid>) -> Vec<autograph::Section> {
-    SectionQueryAdapter::new(db.conn())
+    db.section()
         .filter(DEFAULT_LIMIT, 0, project_id)
         .await
         .unwrap()
@@ -77,7 +76,8 @@ async fn section_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let sections = SectionQueryAdapter::new(db.conn())
+    let sections = db
+        .section()
         .filter(1, 1, QueryFilter::Val(project_id))
         .await
         .unwrap();
