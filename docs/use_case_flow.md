@@ -8,10 +8,10 @@ Applicable to handlers such as `add_card`, `toggle_card`, `delete_card`, `add_pr
 
 1. UI invokes a Tauri command.
 2. Tauri handler validates/parses inputs.
-3. Handler calls `db.begin(...)`.
-4. Database opens a transaction and creates a `SqlxUnitOfWork`.
-5. Domain command service (`*Commands`) executes business logic using repositories from the unit of work.
-6. Unit of work commits the transaction.
+3. Handler constructs a domain command service with a reference to the database (`*Commands::new(&db)`).
+4. Domain command service calls `db.begin(...)` internally to open a transaction.
+5. Business logic executes using repositories from the unit of work.
+6. Unit of work commits (or rolls back on error) the transaction.
 7. Handler optionally executes a follow-up query adapter to return fresh state.
 8. Result is returned to UI (or error mapped to `TauriErr`).
 
@@ -19,22 +19,22 @@ Applicable to handlers such as `add_card`, `toggle_card`, `delete_card`, `add_pr
 sequenceDiagram
     participant UI
     participant Tauri as Tauri Command Handler
-    participant DB as Database::begin
-    participant UoW as SqlxUnitOfWork
     participant Cmd as Domain *Commands
+    participant DB as Database::begin
+    participant UoW as SeaOrmUnitOfWork
     participant Repo as Repositories
-    participant Q as Sqlx*Queries
+    participant Q as SeaOrm*Queries
 
     UI->>Tauri: invoke(command, payload)
     Tauri->>Tauri: parse/validate input
-    Tauri->>DB: begin(async |uow| ...)
+    Tauri->>Cmd: new(&db)
+    Cmd->>DB: begin(async |uow| ...)
     DB->>UoW: open transaction
-    Tauri->>Cmd: new(uow)
     Cmd->>Repo: get/save/delete(...)
     Repo-->>Cmd: domain result
+    Cmd->>UoW: commit()
+    UoW-->>Cmd: transaction committed
     Cmd-->>Tauri: Ok/Err
-    Tauri->>UoW: commit()
-    UoW-->>Tauri: transaction committed
     Tauri->>Q: new(conn).filter(...) / get_project(...) (optional)
     Q-->>Tauri: refreshed data
     Tauri-->>UI: result or TauriErr
