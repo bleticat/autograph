@@ -3,6 +3,7 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
+use autograph_macros::transaction;
 use uuid::Uuid;
 
 /// Command facade that holds a reference to the database and manages its own
@@ -17,38 +18,31 @@ impl<'db, D: Database> SectionCommands<'db, D> {
         Self { db }
     }
 
+    #[transaction]
     pub async fn add(&self, title: &str, project_id: Uuid) -> Result<Section, AppErr> {
         let title = title.to_owned();
-        self.db
-            .begin(async move |uow| {
-                uow.section()
-                    .save(Section {
-                        id: Uuid::nil(),
-                        title,
-                        project_id,
-                    })
-                    .await
+        uow.section()
+            .save(Section {
+                id: Uuid::nil(),
+                title,
+                project_id,
             })
             .await
     }
 
+    #[transaction]
     pub async fn edit(&self, id: Uuid, title: &str) -> Result<(), AppErr> {
         let title = title.to_owned();
-        self.db
-            .begin(async move |uow| {
-                let section = uow.section().get(id).await?;
-                if let Some(mut section) = section {
-                    section.title = title;
-                    uow.section().save(section).await?;
-                }
-                Ok(())
-            })
-            .await
+        let section = uow.section().get(id).await?;
+        if let Some(mut section) = section {
+            section.title = title;
+            uow.section().save(section).await?;
+        }
+        Ok(())
     }
 
+    #[transaction]
     pub async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        self.db
-            .begin(async move |uow| uow.section().delete(id).await)
-            .await
+        uow.section().delete(id).await
     }
 }

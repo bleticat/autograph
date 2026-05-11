@@ -3,6 +3,7 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
+use autograph_macros::transaction;
 use uuid::Uuid;
 
 /// Command facade that holds a reference to the database and manages its own
@@ -17,16 +18,13 @@ impl<'db, D: Database> ProjectCommands<'db, D> {
         Self { db }
     }
 
+    #[transaction]
     pub async fn add(&self, title: &str) -> Result<Project, AppErr> {
         let title = title.to_owned();
-        self.db
-            .begin(async move |uow| {
-                uow.project()
-                    .save(Project {
-                        id: Uuid::nil(),
-                        title,
-                    })
-                    .await
+        uow.project()
+            .save(Project {
+                id: Uuid::nil(),
+                title,
             })
             .await
     }
