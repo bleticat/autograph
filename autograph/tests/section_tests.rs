@@ -26,28 +26,19 @@ async fn sections(db: &DatabaseAdapter, project_id: QueryFilter<Uuid>) -> Vec<au
 #[tokio::test]
 async fn sections_are_filtered_by_project() {
     let db = fresh_db().await;
-    let project_a = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project A").await)
-        .await
-        .unwrap()
-        .id;
-    let project_b = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project B").await)
-        .await
-        .unwrap()
-        .id;
+    let project_a = ProjectCommands::new(&db).add("Project A").await.unwrap().id;
+    let project_b = ProjectCommands::new(&db).add("Project B").await.unwrap().id;
 
-    db.begin(async |uow| SectionCommands::new(uow).add("Backlog", project_a).await)
+    SectionCommands::new(&db)
+        .add("Backlog", project_a)
         .await
         .unwrap();
-    db.begin(async |uow| {
-        SectionCommands::new(uow)
-            .add("In Progress", project_a)
-            .await
-    })
-    .await
-    .unwrap();
-    db.begin(async |uow| SectionCommands::new(uow).add("Done", project_b).await)
+    SectionCommands::new(&db)
+        .add("In Progress", project_a)
+        .await
+        .unwrap();
+    SectionCommands::new(&db)
+        .add("Done", project_b)
         .await
         .unwrap();
 
@@ -64,14 +55,11 @@ async fn sections_are_filtered_by_project() {
 #[tokio::test]
 async fn section_filter_respects_limit_and_offset() {
     let db = fresh_db().await;
-    let project_id = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project").await)
-        .await
-        .unwrap()
-        .id;
+    let project_id = ProjectCommands::new(&db).add("Project").await.unwrap().id;
 
     for title in ["Backlog", "Doing", "Done"] {
-        db.begin(async |uow| SectionCommands::new(uow).add(title, project_id).await)
+        SectionCommands::new(&db)
+            .add(title, project_id)
             .await
             .unwrap();
     }
@@ -88,18 +76,15 @@ async fn section_filter_respects_limit_and_offset() {
 #[tokio::test]
 async fn edit_section_updates_title() {
     let db = fresh_db().await;
-    let project_id = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project").await)
-        .await
-        .unwrap()
-        .id;
-    let section_id = db
-        .begin(async |uow| SectionCommands::new(uow).add("Ideas", project_id).await)
+    let project_id = ProjectCommands::new(&db).add("Project").await.unwrap().id;
+    let section_id = SectionCommands::new(&db)
+        .add("Ideas", project_id)
         .await
         .unwrap()
         .id;
 
-    db.begin(async |uow| SectionCommands::new(uow).edit(section_id, "Ready").await)
+    SectionCommands::new(&db)
+        .edit(section_id, "Ready")
         .await
         .unwrap();
 
@@ -111,18 +96,15 @@ async fn edit_section_updates_title() {
 #[tokio::test]
 async fn delete_section_removes_it() {
     let db = fresh_db().await;
-    let project_id = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project").await)
-        .await
-        .unwrap()
-        .id;
-    let section_id = db
-        .begin(async |uow| SectionCommands::new(uow).add("Ideas", project_id).await)
+    let project_id = ProjectCommands::new(&db).add("Project").await.unwrap().id;
+    let section_id = SectionCommands::new(&db)
+        .add("Ideas", project_id)
         .await
         .unwrap()
         .id;
 
-    db.begin(async |uow| SectionCommands::new(uow).delete(section_id).await)
+    SectionCommands::new(&db)
+        .delete(section_id)
         .await
         .unwrap();
 

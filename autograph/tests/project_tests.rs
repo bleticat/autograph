@@ -64,12 +64,10 @@ async fn empty_database_returns_no_projects() {
 #[tokio::test]
 async fn add_single_project() {
     let db = fresh_db().await;
-    db.begin(async |uow| {
-        ProjectCommands::new(uow).add("My Project").await?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    ProjectCommands::new(&db)
+        .add("My Project")
+        .await
+        .unwrap();
     let projects = all_projects(&db).await;
     assert_eq!(projects.len(), 1);
     assert_eq!(projects[0].title, "My Project");
@@ -79,12 +77,7 @@ async fn add_single_project() {
 async fn add_multiple_projects_preserves_order() {
     let db = fresh_db().await;
     for title in ["Alpha", "Beta", "Gamma"] {
-        db.begin(async |uow| {
-            ProjectCommands::new(uow).add(title).await?;
-            Ok(())
-        })
-        .await
-        .unwrap();
+        ProjectCommands::new(&db).add(title).await.unwrap();
     }
     let projects = all_projects(&db).await;
     assert_eq!(projects.len(), 3);
@@ -97,12 +90,7 @@ async fn add_multiple_projects_preserves_order() {
 async fn project_filter_respects_limit_and_offset() {
     let db = fresh_db().await;
     for title in ["Alpha", "Beta", "Gamma"] {
-        db.begin(async |uow| {
-            ProjectCommands::new(uow).add(title).await?;
-            Ok(())
-        })
-        .await
-        .unwrap();
+        ProjectCommands::new(&db).add(title).await.unwrap();
     }
 
     let projects = db.project().filter(1, 1).await.unwrap();
@@ -113,9 +101,7 @@ async fn project_filter_respects_limit_and_offset() {
 #[tokio::test]
 async fn cards_without_project_by_default() {
     let db = fresh_db().await;
-    db.begin(async |uow| CardCommands::new(uow).add("inbox card").await)
-        .await
-        .unwrap();
+    CardCommands::new(&db).add("inbox card").await.unwrap();
     let cards = cards_without_project(&db).await;
     assert_eq!(cards.len(), 1);
     assert_eq!(cards[0].title, "inbox card");
@@ -125,19 +111,12 @@ async fn cards_without_project_by_default() {
 #[tokio::test]
 async fn add_card_with_project() {
     let db = fresh_db().await;
-    let project = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Work").await)
+    let project_id = ProjectCommands::new(&db).add("Work").await.unwrap().id;
+
+    CardCommands::new(&db)
+        .add_with_project("write report", project_id)
         .await
         .unwrap();
-    let project_id = project.id;
-
-    db.begin(async |uow| {
-        CardCommands::new(uow)
-            .add_with_project("write report", project_id)
-            .await
-    })
-    .await
-    .unwrap();
 
     let cards_by_project = cards_by_project(&db, project_id).await;
     assert_eq!(cards_by_project.len(), 1);
@@ -151,32 +130,19 @@ async fn add_card_with_project() {
 #[tokio::test]
 async fn cards_are_filtered_by_project() {
     let db = fresh_db().await;
-    let p1 = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project A").await)
-        .await
-        .unwrap()
-        .id;
-    let p2 = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Project B").await)
-        .await
-        .unwrap()
-        .id;
+    let p1 = ProjectCommands::new(&db).add("Project A").await.unwrap().id;
+    let p2 = ProjectCommands::new(&db).add("Project B").await.unwrap().id;
 
-    db.begin(async |uow| {
-        CardCommands::new(uow)
-            .add_with_project("card for A", p1)
-            .await
-    })
-    .await
-    .unwrap();
-    db.begin(async |uow| {
-        CardCommands::new(uow)
-            .add_with_project("card for B", p2)
-            .await
-    })
-    .await
-    .unwrap();
-    db.begin(async |uow| CardCommands::new(uow).add("no project card").await)
+    CardCommands::new(&db)
+        .add_with_project("card for A", p1)
+        .await
+        .unwrap();
+    CardCommands::new(&db)
+        .add_with_project("card for B", p2)
+        .await
+        .unwrap();
+    CardCommands::new(&db)
+        .add("no project card")
         .await
         .unwrap();
 
@@ -196,39 +162,26 @@ async fn cards_are_filtered_by_project() {
 #[tokio::test]
 async fn project_query_returns_sections_and_unsectioned_cards() {
     let db = fresh_db().await;
-    let project_id = db
-        .begin(async |uow| ProjectCommands::new(uow).add("Website").await)
+    let project_id = ProjectCommands::new(&db).add("Website").await.unwrap().id;
+
+    let backlog_id = SectionCommands::new(&db)
+        .add("Backlog", project_id)
         .await
         .unwrap()
         .id;
-
-    let backlog_id = db
-        .begin(async |uow| SectionCommands::new(uow).add("Backlog", project_id).await)
+    SectionCommands::new(&db)
+        .add("In Progress", project_id)
         .await
-        .unwrap()
-        .id;
-    db.begin(async |uow| {
-        SectionCommands::new(uow)
-            .add("In Progress", project_id)
-            .await
-    })
-    .await
-    .unwrap();
+        .unwrap();
 
-    db.begin(async |uow| {
-        CardCommands::new(uow)
-            .add_with_assignment("Investigate bug", Some(project_id), None)
-            .await
-    })
-    .await
-    .unwrap();
-    db.begin(async |uow| {
-        CardCommands::new(uow)
-            .add_with_assignment("Draft copy", Some(project_id), Some(backlog_id))
-            .await
-    })
-    .await
-    .unwrap();
+    CardCommands::new(&db)
+        .add_with_assignment("Investigate bug", Some(project_id), None)
+        .await
+        .unwrap();
+    CardCommands::new(&db)
+        .add_with_assignment("Draft copy", Some(project_id), Some(backlog_id))
+        .await
+        .unwrap();
 
     let project = get_project(&db, project_id).await;
     assert_eq!(project.project.title, "Website");
