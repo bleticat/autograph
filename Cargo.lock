@@ -140,12 +140,22 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 name = "autograph"
 version = "0.1.0"
 dependencies = [
+ "autograph-macros",
  "chrono",
  "sea-orm",
  "sea-orm-migration",
  "serde",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "autograph-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]

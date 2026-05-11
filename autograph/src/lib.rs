@@ -3,6 +3,7 @@ pub mod project;
 pub mod section;
 pub mod shared;
 
+pub use autograph_macros::transaction;
 pub use card::adapters::seaorm::queries::SeaOrmCardQueries;
 pub use card::commands::CardCommands;
 pub use card::entity::Card;

@@ -3,6 +3,7 @@ use crate::shared::error::AppErr;
 use crate::shared::ports::database::Database;
 use crate::shared::ports::repository::Repository;
 use crate::shared::ports::unit_of_work::UnitOfWork;
+use autograph_macros::transaction;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -41,6 +42,7 @@ impl<'db, D: Database> CardCommands<'db, D> {
             .await
     }
 
+    #[transaction]
     pub async fn add_with_assignment(
         &self,
         title: &str,
@@ -48,25 +50,22 @@ impl<'db, D: Database> CardCommands<'db, D> {
         section_id: Option<Uuid>,
     ) -> Result<Card, AppErr> {
         let title = title.to_owned();
-        self.db
-            .begin(async move |uow| {
-                let (project_id, section_id) =
-                    resolve_assignment(uow, project_id, section_id).await?;
-                uow.card()
-                    .save(Card {
-                        id: Uuid::nil(),
-                        title,
-                        description: String::new(),
-                        deadline: None,
-                        completed: false,
-                        project_id,
-                        section_id,
-                    })
-                    .await
+        let (project_id, section_id) =
+            resolve_assignment(uow, project_id, section_id).await?;
+        uow.card()
+            .save(Card {
+                id: Uuid::nil(),
+                title,
+                description: String::new(),
+                deadline: None,
+                completed: false,
+                project_id,
+                section_id,
             })
             .await
     }
 
+    #[transaction]
     pub async fn edit(
         &self,
         id: Uuid,
@@ -78,41 +77,33 @@ impl<'db, D: Database> CardCommands<'db, D> {
     ) -> Result<(), AppErr> {
         let title = title.to_owned();
         let description = description.to_owned();
-        self.db
-            .begin(async move |uow| {
-                let card = uow.card().get(id).await?;
-                if let Some(mut card) = card {
-                    let (project_id, section_id) =
-                        resolve_assignment(uow, project_id, section_id).await?;
-                    card.title = title;
-                    card.description = description;
-                    card.deadline = deadline;
-                    card.project_id = project_id;
-                    card.section_id = section_id;
-                    uow.card().save(card).await?;
-                }
-                Ok(())
-            })
-            .await
+        let card = uow.card().get(id).await?;
+        if let Some(mut card) = card {
+            let (project_id, section_id) =
+                resolve_assignment(uow, project_id, section_id).await?;
+            card.title = title;
+            card.description = description;
+            card.deadline = deadline;
+            card.project_id = project_id;
+            card.section_id = section_id;
+            uow.card().save(card).await?;
+        }
+        Ok(())
     }
 
+    #[transaction]
     pub async fn toggle(&self, id: Uuid) -> Result<(), AppErr> {
-        self.db
-            .begin(async move |uow| {
-                let card = uow.card().get(id).await?;
-                if let Some(mut card) = card {
-                    card.completed = !card.completed;
-                    uow.card().save(card).await?;
-                }
-                Ok(())
-            })
-            .await
+        let card = uow.card().get(id).await?;
+        if let Some(mut card) = card {
+            card.completed = !card.completed;
+            uow.card().save(card).await?;
+        }
+        Ok(())
     }
 
+    #[transaction]
     pub async fn delete(&self, id: Uuid) -> Result<(), AppErr> {
-        self.db
-            .begin(async move |uow| uow.card().delete(id).await)
-            .await
+        uow.card().delete(id).await
     }
 }
 
