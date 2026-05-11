@@ -1,6 +1,6 @@
 use autograph::{
     Card, CardCommands, CardQueries, Database, DatabaseBuilder, ProjectCommands, QueryFilter,
-    SeaOrmCardQueries, SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
+    SeaOrmDatabase, SeaOrmDatabaseBuilder, SectionCommands,
 };
 use chrono::NaiveDate;
 use uuid::Uuid;
@@ -8,7 +8,6 @@ use uuid::Uuid;
 const DEFAULT_LIMIT: u32 = 100;
 type DatabaseAdapter = SeaOrmDatabase;
 type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
-type CardQueryAdapter = SeaOrmCardQueries;
 
 async fn fresh_db() -> DatabaseAdapter {
     DatabaseBuilderAdapter::open(":memory:")
@@ -19,7 +18,7 @@ async fn fresh_db() -> DatabaseAdapter {
 }
 
 async fn all_cards(db: &DatabaseAdapter) -> Vec<Card> {
-    CardQueryAdapter::new(db.conn())
+    db.card()
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -32,7 +31,7 @@ async fn all_cards(db: &DatabaseAdapter) -> Vec<Card> {
 }
 
 async fn cards_by_project(db: &DatabaseAdapter, project_id: Uuid) -> Vec<Card> {
-    CardQueryAdapter::new(db.conn())
+    db.card()
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -48,7 +47,7 @@ async fn cards_with_deadline(
     db: &DatabaseAdapter,
     date: chrono::DateTime<chrono::Utc>,
 ) -> Vec<Card> {
-    CardQueryAdapter::new(db.conn())
+    db.card()
         .filter(
             DEFAULT_LIMIT,
             0,
@@ -107,7 +106,8 @@ async fn card_filter_respects_limit_and_offset() {
             .unwrap();
     }
 
-    let cards = CardQueryAdapter::new(db.conn())
+    let cards = db
+        .card()
         .filter(
             1,
             1,

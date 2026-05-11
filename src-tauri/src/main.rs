@@ -2,18 +2,14 @@
 
 use autograph::{
     AppErr, Card, CardCommands, CardQueries, Database, DatabaseBuilder, Project, ProjectCommands,
-    ProjectData, ProjectQueries, QueryFilter, SeaOrmCardQueries, SeaOrmDatabase,
-    SeaOrmDatabaseBuilder, SeaOrmProjectQueries, SeaOrmSectionQueries, Section, SectionCommands,
-    SectionQueries, parse_date, parse_optional_date,
+    ProjectData, ProjectQueries, QueryFilter, SeaOrmDatabase, SeaOrmDatabaseBuilder, Section,
+    SectionCommands, SectionQueries, parse_date, parse_optional_date,
 };
 use serde::Serialize;
 use tauri::{State, async_runtime::block_on};
 
 type DatabaseAdapter = SeaOrmDatabase;
 type DatabaseBuilderAdapter = SeaOrmDatabaseBuilder;
-type CardQueryAdapter = SeaOrmCardQueries;
-type ProjectQueryAdapter = SeaOrmProjectQueries;
-type SectionQueryAdapter = SeaOrmSectionQueries;
 type TauriResult<T> = Result<T, TauriErr>;
 
 #[derive(Clone, Debug, Serialize)]
@@ -54,7 +50,9 @@ async fn filter_cards(
     let project_id = project_id.try_map(|id| parse_uuid(&id, "project_id"))?;
     let section_id = section_id.try_map(|id| parse_uuid(&id, "section_id"))?;
 
-    Ok(CardQueryAdapter::new(state.db.conn())
+    Ok(state
+        .db
+        .card()
         .filter(limit, offset, deadline, project_id, section_id)
         .await?)
 }
@@ -131,9 +129,7 @@ async fn filter_projects(
     offset: u32,
     state: State<'_, AppState>,
 ) -> TauriResult<Vec<Project>> {
-    Ok(ProjectQueryAdapter::new(state.db.conn())
-        .filter(limit, offset)
-        .await?)
+    Ok(state.db.project().filter(limit, offset).await?)
 }
 
 #[tauri::command]
@@ -142,9 +138,7 @@ async fn get_project(
     state: State<'_, AppState>,
 ) -> TauriResult<Option<ProjectData>> {
     let project_id = parse_uuid(&project_id, "project_id")?;
-    Ok(ProjectQueryAdapter::new(state.db.conn())
-        .get_project(project_id)
-        .await?)
+    Ok(state.db.project().get_project(project_id).await?)
 }
 
 #[tauri::command]
@@ -168,9 +162,7 @@ async fn filter_sections(
 ) -> TauriResult<Vec<Section>> {
     let project_id = project_id.try_map(|id| parse_uuid(&id, "project_id"))?;
 
-    Ok(SectionQueryAdapter::new(state.db.conn())
-        .filter(limit, offset, project_id)
-        .await?)
+    Ok(state.db.section().filter(limit, offset, project_id).await?)
 }
 
 #[tauri::command]
