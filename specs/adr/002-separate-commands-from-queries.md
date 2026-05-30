@@ -3,6 +3,7 @@
 ## Links to Related ADRs
 
 - Related: [003. Project Structure](./003-project-structure.md)
+- Related: [004. Database Interactions](./004-database-interactions.md)
 
 ## Context
 
