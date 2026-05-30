@@ -1,10 +1,8 @@
 # 004. Database Interactions
 
-## Links to Related ADRs
+Date: 2026-05-30
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
+Status: Active
 
 ## Context
 
@@ -30,6 +28,12 @@ Queries are read-side ports. They may use optimized joins, projections, filters,
 
 Concrete database code lives in adapters. Domain code and commands depend on ports, not adapter internals.
 
+## Alternatives
+
+- Let commands and queries use database drivers directly. This is simpler at first but couples core behavior to storage details.
+- Manage transactions in boundary layers. This gives callers control but makes transaction safety depend on each call site.
+- Put context-specific query factories directly on concrete database adapters only. This keeps the shared port smaller but gives callers less common structure.
+
 ## Pros
 
 Write behavior gets automatic transaction boundaries.
@@ -51,3 +55,9 @@ There are more abstractions than direct database calls.
 Read and write paths may duplicate some mapping code.
 
 Callers must initialize query and command classes instead of asking the database for context-specific APIs.
+
+## Links to Related ADRs
+
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Related: [003. Project Structure](./003-project-structure.md)
+- Related: [005. Tests Structure](./005-tests-structure.md)

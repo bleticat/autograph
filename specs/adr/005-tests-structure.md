@@ -1,11 +1,8 @@
 # 005. Tests Structure
 
-## Links to Related ADRs
+Date: 2026-05-30
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+Status: Active
 
 ## Context
 
@@ -25,6 +22,12 @@ Test folder structure should mirror bounded-context separation. A context's test
 
 Shared test helpers are allowed when they reduce setup noise, but they must not hide the command or query being tested.
 
+## Alternatives
+
+- Prefer isolated unit tests with mocked repositories. This is faster but can miss persistence, mapping, and transaction bugs.
+- Test mostly through the UI or Tauri boundary. This verifies full flows but makes failures harder to localize.
+- Reuse one database across tests. This is faster but risks order-dependent tests and hidden shared state.
+
 ## Pros
 
 Tests exercise the same core ports used by application code.
@@ -42,3 +45,10 @@ Integration-style tests are slower than pure unit tests.
 Per-test database setup adds boilerplate.
 
 Helpers need discipline so tests still show the behavior under test clearly.
+
+## Links to Related ADRs
+
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Related: [003. Project Structure](./003-project-structure.md)
+- Related: [004. Database Interactions](./004-database-interactions.md)
+- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)

@@ -1,10 +1,8 @@
 # 006. Feature Specification Workflow
 
-## Links to Related ADRs
+Date: 2026-05-30
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
+Status: Active
 
 ## Context
 
@@ -35,6 +33,12 @@ Suggested feature spec structure:
 
 `## Test Cases` is required. It must list every expected test case, including success, validation, edge, and regression cases.
 
+## Alternatives
+
+- Treat tests as the only executable specification. This avoids duplicate documents but can make product intent harder to review before implementation.
+- Write specs after implementation. This captures final behavior but loses the planning and review benefits of spec-driven work.
+- Store feature specs beside code. This keeps specs near implementation but can make product behavior harder to scan as a set.
+
 ## Pros
 
 Features start from behavior instead of code shape.
@@ -52,3 +56,9 @@ Writing the spec adds upfront work.
 The test-case list must be maintained as behavior changes.
 
 Cross-context use cases may require judgment about spec ownership.
+
+## Links to Related ADRs
+
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Related: [003. Project Structure](./003-project-structure.md)
+- Related: [005. Tests Structure](./005-tests-structure.md)

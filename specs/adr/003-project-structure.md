@@ -1,11 +1,8 @@
 # 003. Project Structure
 
-## Links to Related ADRs
+Date: 2026-05-30
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+Status: Active
 
 ## Context
 
@@ -29,6 +26,12 @@ Use `shared/` only for cross-context contracts and utilities, such as database a
 
 `shared/` must not hold domain behavior that belongs to one context.
 
+## Alternatives
+
+- Organize primarily by technical layer, such as `domain/`, `commands/`, `queries/`, and `adapters/`. This is familiar but can scatter one feature across the tree.
+- Require identical folders inside every bounded context. This improves uniformity but adds empty structure for small contexts.
+- Put most reusable code in `shared/`. This maximizes reuse but weakens context ownership.
+
 ## Pros
 
 New specs usually map to an obvious context.
@@ -46,3 +49,10 @@ This creates more small files than a simple layer-based layout.
 Bounded-context boundaries require judgment.
 
 `shared/` can become a dumping ground if not curated.
+
+## Links to Related ADRs
+
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Related: [004. Database Interactions](./004-database-interactions.md)
+- Related: [005. Tests Structure](./005-tests-structure.md)
+- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
