@@ -12,6 +12,8 @@ We are moving to spec-driven development. New features need a written use case b
 
 Put feature specs in `specs/features/`.
 
+Use `specs/features/000-template.md` as the starting point for new feature specs.
+
 Mirror bounded-context folders inside `specs/features/`. A feature spec belongs to the primary context it changes. Cross-context specs should name affected contexts and split only when they describe separate use cases.
 
 Feature workflow:
