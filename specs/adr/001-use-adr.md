@@ -30,7 +30,7 @@ Rules:
    - `## Cons`
    - `## Links to Related ADRs` when related ADRs exist
 5. Put `## Links to Related ADRs` at the bottom so the decision and consequences stay first.
-6. Label ADR links, for example `Related`, `Changes`, or `Changed by`.
+6. Label ADR links, for example `Related`, `Refines`, `Refined by`, `Supersedes`, or `Superseded by`.
 7. ADR links must be bidirectional.
 8. Mention effects on specs, implementation, tests, migrations, and operations when relevant.
 9. Link related specs, issues, PRs, code, and ADRs instead of copying long material.

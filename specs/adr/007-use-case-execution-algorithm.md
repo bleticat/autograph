@@ -22,9 +22,9 @@ Boundary layers parse input, submit a typed request to the mediator, and seriali
 
 For command requests, the mediator opens a database unit of work, creates a transaction execution scope, builds the registered command handler, executes it, and lets the unit of work commit on success or roll back on failure.
 
-For query requests, the mediator opens or borrows a read connection, creates a read execution scope, builds the registered query handler, executes it, and returns the read result without a write transaction.
+For query requests, the mediator opens or borrows a read connection, creates a read execution scope, builds the registered query handler, executes it, and returns the read result without a write transaction. Adapters may use read-only transactions or snapshots when they need stable reads.
 
-Version 1 includes lifecycle execution only. Validation, authorization, retries, idempotency, metrics, and error mapping are deferred to future decisions.
+Version 1 includes lifecycle execution and the guardrails below. Detailed mediator policies for validation, authorization, retries, idempotency, metrics, and error mapping are deferred to future decisions.
 
 ## Guardrails
 
@@ -35,6 +35,14 @@ Handlers must not call the mediator for normal internal work.
 Commands and queries remain semantically separate even though callers use one mediator API.
 
 A workflow that needs a write and refreshed data executes a command request first, then a query request.
+
+The follow-up query must read the committed command result from the primary read path unless a future ADR explicitly allows eventual consistency for that workflow.
+
+Boundary layers may reject malformed transport input and serialize protocol responses, but they must not become the home for business validation, authorization policy, retries, idempotency, metrics, or error translation rules.
+
+Business validation and invariants live in command/query handlers, domain objects, or request construction until a later ADR defines a shared validation mechanism.
+
+Do not add mediator middleware or registry behavior for authorization, retries, idempotency, metrics, or error mapping without a separate ADR. Use-case-specific exceptions must be named in the relevant feature spec.
 
 ## Alternatives
 
@@ -67,8 +75,8 @@ Future middleware needs separate design to avoid turning the mediator into a pol
 
 ## Links to Related ADRs
 
-- Changes: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Changes: [003. Project Structure](./003-project-structure.md)
-- Changes: [004. Database Interactions](./004-database-interactions.md)
-- Changes: [005. Tests Structure](./005-tests-structure.md)
-- Changes: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Related: [003. Project Structure](./003-project-structure.md)
+- Related: [004. Database Interactions](./004-database-interactions.md)
+- Related: [005. Tests Structure](./005-tests-structure.md)
+- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)

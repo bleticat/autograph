@@ -21,7 +21,7 @@ Mirror bounded-context folders inside `specs/features/`. A feature spec belongs 
 Feature workflow:
 
 1. Write or update the feature spec.
-2. List all test cases before implementation.
+2. List material test cases and coverage obligations before implementation.
 3. Add tests matching the listed cases.
 4. Implement through command/query requests, handlers, ports, mediator registration, and adapters.
 5. Keep the spec and tests in sync when behavior changes.
@@ -37,7 +37,7 @@ Suggested feature spec structure:
 
 `## Commands and Queries` should name the command and query requests involved, their expected results, and any mediator-visible lifecycle expectations.
 
-`## Test Cases` is required. It must list every expected test case, including success, validation, edge, and regression cases.
+`## Test Cases` is required. It should list the material scenarios the implementation is expected to cover, including success, validation, edge, regression, lifecycle, and transaction cases when relevant. The list can link to concrete tests after they are added and does not need to enumerate trivial permutations.
 
 ## Alternatives
 
@@ -49,7 +49,7 @@ Suggested feature spec structure:
 
 Features start from behavior instead of code shape.
 
-The full test list makes scope visible before implementation.
+The material test-case list makes scope visible before implementation.
 
 Mirrored folders keep specs aligned with bounded contexts.
 
@@ -59,7 +59,7 @@ Specs, tests, and code can be reviewed together.
 
 Writing the spec adds upfront work.
 
-The test-case list must be maintained as behavior changes.
+The material test-case list must be maintained as behavior changes.
 
 Cross-context use cases may require judgment about spec ownership.
 
@@ -68,4 +68,4 @@ Cross-context use cases may require judgment about spec ownership.
 - Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Related: [003. Project Structure](./003-project-structure.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
-- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

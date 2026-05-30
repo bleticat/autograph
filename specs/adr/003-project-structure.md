@@ -59,4 +59,4 @@ Bounded-context boundaries require judgment.
 - Related: [004. Database Interactions](./004-database-interactions.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
 - Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
-- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

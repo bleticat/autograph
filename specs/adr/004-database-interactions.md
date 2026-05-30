@@ -22,7 +22,9 @@ For command requests, the mediator opens a unit of work, creates a transaction e
 
 The unit-of-work lifecycle owns transaction behavior: commit on success, rollback on failure.
 
-For query requests, the mediator opens or borrows a read connection, creates a read execution scope, builds the registered query handler, and executes it without a write transaction.
+For query requests, the mediator opens or borrows a read connection, creates a read execution scope, builds the registered query handler, and executes it without a write transaction. Adapters may use read-only transactions or connection snapshots when needed, but queries must not own commit or rollback of business writes.
+
+A command followed by a query in the same workflow must read the committed result of that command from the primary read path. If a later decision introduces read replicas, projections, or async read models, that decision must state where read-your-writes is required and where eventual consistency is acceptable.
 
 Repositories are write-side ports for loading, saving, and deleting domain entities inside a transaction.
 
@@ -58,9 +60,11 @@ Read and write paths may duplicate some mapping code.
 
 Handler factories need explicit registration during application startup.
 
+Read-after-write behavior needs explicit care if optimized read models or replicas are introduced later.
+
 ## Links to Related ADRs
 
 - Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Related: [003. Project Structure](./003-project-structure.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
-- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

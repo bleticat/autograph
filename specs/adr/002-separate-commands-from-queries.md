@@ -24,7 +24,7 @@ Query handlers implement read behavior. They can return entities, projections, o
 
 Boundary layers submit typed command or query requests to the application mediator. They must not coordinate repositories, instantiate handlers, or duplicate command rules.
 
-When a workflow needs a write and refreshed data, run a command request, then a query request.
+When a workflow needs a write and refreshed data, run a command request, then a query request. The follow-up query reads committed command results from the primary read path unless a later ADR explicitly introduces eventually consistent read models or replicas.
 
 ## Alternatives
 
@@ -56,4 +56,4 @@ The term `command` now refers to a request type; use `command handler` when refe
 - Related: [004. Database Interactions](./004-database-interactions.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
 - Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
-- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
