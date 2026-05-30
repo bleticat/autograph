@@ -6,7 +6,7 @@ Status: Active
 
 ## Context
 
-Core behavior depends on commands, queries, and persistence boundaries working together.
+Core behavior depends on command requests, query requests, handlers, mediator execution, and persistence boundaries working together.
 
 Most useful tests should verify those boundaries, not isolated implementation details.
 
@@ -16,21 +16,25 @@ Use mostly integration-style tests for core behavior.
 
 Each test initializes its own database and destroys it within the test lifecycle. Tests must not depend on state created by another test.
 
-Tests call commands or queries, not adapters or repositories directly. Each test should focus on one command or one query as the behavior under test.
+Tests should prefer executing command and query requests through the mediator, so they exercise the same lifecycle as application code.
+
+Each test should focus on one command request or one query request as the behavior under test.
+
+Handler-level tests are allowed when useful, but tests must not call adapters or repositories directly as the behavior under test.
 
 Test folder structure should mirror bounded-context separation. A context's tests live in the matching test module or folder.
 
-Shared test helpers are allowed when they reduce setup noise, but they must not hide the command or query being tested.
+Shared test helpers are allowed when they reduce setup noise, but they must not hide the command or query request being tested.
 
 ## Alternatives
 
-- Prefer isolated unit tests with mocked repositories. This is faster but can miss persistence, mapping, and transaction bugs.
+- Prefer isolated unit tests with mocked repositories. This is faster but can miss persistence, mapping, mediator wiring, and transaction bugs.
 - Test mostly through the UI or Tauri boundary. This verifies full flows but makes failures harder to localize.
 - Reuse one database across tests. This is faster but risks order-dependent tests and hidden shared state.
 
 ## Pros
 
-Tests exercise the same core ports used by application code.
+Tests exercise the same core ports and mediator lifecycle used by application code.
 
 Fresh databases keep tests independent and repeatable.
 
@@ -52,3 +56,4 @@ Helpers need discipline so tests still show the behavior under test clearly.
 - Related: [003. Project Structure](./003-project-structure.md)
 - Related: [004. Database Interactions](./004-database-interactions.md)
 - Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

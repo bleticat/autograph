@@ -10,43 +10,45 @@ Bounded contexts need persistence without depending on database drivers or stora
 
 Writes also need consistent transaction boundaries. Reads need room for optimized query shapes.
 
+Use case execution now goes through a mediator, so boundary layers should not create units of work, connections, repositories, or handlers directly.
+
 ## Decision
 
-Access persistence through shared core ports.
+Access persistence through shared core ports and the mediator execution algorithm.
 
-The database is a port in `shared/`. It owns access to persistence resources but does not expose bounded-context query classes directly.
+The database is a port in `shared/`. It owns access to persistence resources but must not expose bounded-context command requests, query requests, handlers, or handler factories.
 
-For reads, the database can share a connection. Query classes are initialized from that connection and stay owned by their bounded contexts.
+For command requests, the mediator opens a unit of work, creates a transaction execution scope, builds the registered command handler, and executes it inside that scope.
 
-For writes, the database can spawn a unit of work. Command classes are initialized with that unit of work and use transaction-scoped repositories.
+The unit-of-work lifecycle owns transaction behavior: commit on success, rollback on failure.
 
-The unit-of-work spawn owns transaction lifecycle: commit on success, rollback on failure.
+For query requests, the mediator opens or borrows a read connection, creates a read execution scope, builds the registered query handler, and executes it without a write transaction.
 
 Repositories are write-side ports for loading, saving, and deleting domain entities inside a transaction.
 
-Queries are read-side ports. They may use optimized joins, projections, filters, or read models without changing command or repository APIs.
+Queries are read-side ports and handlers. They may use optimized joins, projections, filters, or read models without changing command handlers or repository APIs.
 
-Concrete database code lives in adapters. Domain code and commands depend on ports, not adapter internals.
+Concrete database code lives in adapters. Domain code, handlers, and mediator factories depend on ports, not adapter internals.
 
 ## Alternatives
 
-- Let commands and queries use database drivers directly. This is simpler at first but couples core behavior to storage details.
+- Let handlers use database drivers directly. This is simpler at first but couples core behavior to storage details.
 - Manage transactions in boundary layers. This gives callers control but makes transaction safety depend on each call site.
-- Put context-specific query factories directly on concrete database adapters only. This keeps the shared port smaller but gives callers less common structure.
+- Put context-specific handler factories directly on concrete database adapters. This keeps mediator wiring smaller but turns the database into a use case registry.
 
 ## Pros
 
 Write behavior gets automatic transaction boundaries.
 
-Commands stay focused on business changes.
+Handlers stay focused on use case behavior.
 
 Queries can be tuned for read needs without complicating writes.
 
-The database port stays small and does not need to know every query class.
+The database port stays small and does not need to know every bounded-context use case.
 
 Database technology can change behind adapters.
 
-Tests can use the same ports as production code.
+Tests can use the same mediator and database ports as production code.
 
 ## Cons
 
@@ -54,10 +56,11 @@ There are more abstractions than direct database calls.
 
 Read and write paths may duplicate some mapping code.
 
-Callers must initialize query and command classes instead of asking the database for context-specific APIs.
+Handler factories need explicit registration during application startup.
 
 ## Links to Related ADRs
 
 - Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Related: [003. Project Structure](./003-project-structure.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
+- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

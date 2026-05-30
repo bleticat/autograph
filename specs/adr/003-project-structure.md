@@ -8,6 +8,8 @@ Status: Active
 
 The core should grow by product capability, not by technical layer. Specs need a clear home for behavior, boundaries, and abstractions.
 
+Use case execution now goes through a mediator, but bounded contexts still own their domain vocabulary and behavior.
+
 ## Decision
 
 Use a feature-based ports and adapters structure.
@@ -15,14 +17,15 @@ Use a feature-based ports and adapters structure.
 Each bounded context gets its own folder. It owns its domain vocabulary and usually contains:
 
 - DDD abstractions: entities, value objects, aggregates, and related data structures.
-- Commands for state-changing use cases.
+- Command and query request types for use case inputs.
+- Command and query handlers for use case behavior.
 - Ports that describe external needs.
-- Common ports such as repositories and queries.
+- Common ports such as repositories and read-side queries.
 - Adapters that implement ports for concrete infrastructure.
 
 The internal file split can vary by size. Ownership matters more than identical folders: context-specific behavior and contracts stay in the context.
 
-Use `shared/` only for cross-context contracts and utilities, such as database abstractions, transactions, generic repositories, shared errors, and query helpers.
+Use `shared/` only for cross-context contracts and utilities, such as database abstractions, transaction primitives, generic mediator abstractions, generic repositories, shared errors, and query helpers.
 
 `shared/` must not hold domain behavior that belongs to one context.
 
@@ -36,7 +39,7 @@ Use `shared/` only for cross-context contracts and utilities, such as database a
 
 New specs usually map to an obvious context.
 
-Domain behavior stays near its commands, ports, and adapters.
+Domain behavior stays near its requests, handlers, ports, and adapters.
 
 Infrastructure can change behind ports.
 
@@ -56,3 +59,4 @@ Bounded-context boundaries require judgment.
 - Related: [004. Database Interactions](./004-database-interactions.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
 - Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

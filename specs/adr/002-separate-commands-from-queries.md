@@ -8,41 +8,47 @@ Status: Active
 
 Core behavior has writes and reads. Writes enforce rules and change state. Reads retrieve data for views, decisions, and integrations.
 
-Mixing them hides intent and pushes orchestration into boundary or adapter code.
+Mixing them hides intent and can push orchestration, transaction handling, or read shaping into boundary code.
 
 ## Decision
 
-Separate commands from queries inside each bounded context.
+Separate command requests from query requests inside each bounded context.
 
-Commands are state-changing use cases. Keep them simple: apply one business change, enforce rules, call needed ports, and leave the system valid. Boundary layers should call commands for writes instead of coordinating repositories directly.
+Command requests are data-only inputs for state-changing use cases. They describe the requested business change but do not perform it.
 
-Queries are read-side contracts. They can be optimized and adjusted for specific read needs without reshaping write commands. They may return entities, projections, or read models.
+Command handlers implement write behavior. They enforce rules, call needed ports, change state, and leave the system valid.
 
-When a workflow needs a write and refreshed data, run a command, then a query. Do not duplicate command rules in the boundary layer.
+Query requests are data-only inputs for read use cases. They describe the requested read shape, filters, or lookup.
+
+Query handlers implement read behavior. They can return entities, projections, or read models and may be optimized for specific read needs without reshaping command handlers.
+
+Boundary layers submit typed command or query requests to the application mediator. They must not coordinate repositories, instantiate handlers, or duplicate command rules.
+
+When a workflow needs a write and refreshed data, run a command request, then a query request.
 
 ## Alternatives
 
-- Let boundary layers coordinate repositories directly. This reduces use-case types but spreads business rules into UI or adapter code.
-- Use commands for both reads and writes. This gives one interaction style but hides whether a call changes state.
+- Let boundary layers coordinate repositories directly. This reduces use-case types but spreads business rules and transaction assumptions into UI or adapter code.
+- Use one request kind for both reads and writes. This gives one interaction style but hides whether a call changes state.
 - Return full read-side projections from every command. This can simplify callers but couples write use cases to screen-specific read needs.
 
 ## Pros
 
-Write commands stay small and rule-focused.
+Write behavior stays small and rule-focused.
 
 Queries can evolve for performance, screens, reports, and integrations.
 
 Read models can change without reshaping command APIs.
 
-Tests can target write and read contracts separately.
+Tests can target write and read contracts separately while exercising the shared mediator lifecycle.
 
 ## Cons
 
 Small features get some extra ceremony.
 
-Some workflows need both a command and a query.
+Some workflows need both a command request and a query request.
 
-Command return values require judgment: identifiers or created objects are fine; broad read composition belongs in queries.
+The term `command` now refers to a request type; use `command handler` when referring to the behavior implementation.
 
 ## Links to Related ADRs
 
@@ -50,3 +56,4 @@ Command return values require judgment: identifiers or created objects are fine;
 - Related: [004. Database Interactions](./004-database-interactions.md)
 - Related: [005. Tests Structure](./005-tests-structure.md)
 - Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Changed by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
