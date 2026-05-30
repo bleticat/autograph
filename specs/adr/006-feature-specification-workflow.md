@@ -65,7 +65,6 @@ Cross-context use cases may require judgment about spec ownership.
 
 ## Links to Related ADRs
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Depends on: [003. Project Structure](./003-project-structure.md)
+- Depends on: [005. Tests Structure](./005-tests-structure.md)
+- Depends on: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

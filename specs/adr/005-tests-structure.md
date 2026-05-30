@@ -56,8 +56,7 @@ Infrastructure contract tests add another test category to maintain.
 
 ## Links to Related ADRs
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
-- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Depends on: [003. Project Structure](./003-project-structure.md)
+- Depends on: [004. Database Interactions](./004-database-interactions.md)
+- Used by: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Depends on: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

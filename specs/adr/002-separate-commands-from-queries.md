@@ -52,8 +52,6 @@ The term `command` now refers to a request type; use `command handler` when refe
 
 ## Links to Related ADRs
 
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
-- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Used by: [003. Project Structure](./003-project-structure.md)
+- Used by: [004. Database Interactions](./004-database-interactions.md)
+- Refined by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

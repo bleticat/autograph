@@ -55,8 +55,7 @@ Bounded-context boundaries require judgment.
 
 ## Links to Related ADRs
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
-- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Depends on: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Constrains: [004. Database Interactions](./004-database-interactions.md)
+- Used by: [005. Tests Structure](./005-tests-structure.md)
+- Used by: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)

@@ -64,7 +64,7 @@ Read-after-write behavior needs explicit care if optimized read models or replic
 
 ## Links to Related ADRs
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)
+- Depends on: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Constrained by: [003. Project Structure](./003-project-structure.md)
+- Used by: [005. Tests Structure](./005-tests-structure.md)
+- Refined by: [007. Use Case Execution Algorithm](./007-use-case-execution-algorithm.md)

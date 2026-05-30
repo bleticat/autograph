@@ -30,6 +30,6 @@ Describe the costs, tradeoffs, and risks of the decision.
 
 ## Links to Related ADRs
 
-Add this section when related ADRs exist. Keep links bidirectional and label the relationship.
+Add this section when direct ADR dependencies exist. Keep links bidirectional and label the relationship.
 
-- Related: [NNN. Related Decision](./NNN-related-decision.md)
+- Depends on: [NNN. Related Decision](./NNN-related-decision.md)

@@ -75,8 +75,7 @@ Future middleware needs separate design to avoid turning the mediator into a pol
 
 ## Links to Related ADRs
 
-- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
-- Related: [003. Project Structure](./003-project-structure.md)
-- Related: [004. Database Interactions](./004-database-interactions.md)
-- Related: [005. Tests Structure](./005-tests-structure.md)
-- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
+- Depends on: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
+- Refines: [004. Database Interactions](./004-database-interactions.md)
+- Used by: [005. Tests Structure](./005-tests-structure.md)
+- Used by: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
