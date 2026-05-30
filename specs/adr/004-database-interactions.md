@@ -4,6 +4,7 @@
 
 - Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Related: [003. Project Structure](./003-project-structure.md)
+- Related: [005. Tests Structure](./005-tests-structure.md)
 
 ## Context
 
