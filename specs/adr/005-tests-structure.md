@@ -5,6 +5,7 @@
 - Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 - Related: [003. Project Structure](./003-project-structure.md)
 - Related: [004. Database Interactions](./004-database-interactions.md)
+- Related: [006. Feature Specification Workflow](./006-feature-specification-workflow.md)
 
 ## Context
 
