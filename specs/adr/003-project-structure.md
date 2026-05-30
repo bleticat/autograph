@@ -1,4 +1,8 @@
-# 002. Project Structure
+# 003. Project Structure
+
+## Links to Related ADRs
+
+- Related: [002. Separate Commands From Queries](./002-separate-commands-from-queries.md)
 
 ## Context
 
@@ -13,8 +17,7 @@ Each bounded context gets its own folder. It owns its domain vocabulary and usua
 - DDD abstractions: entities, value objects, aggregates, and related data structures.
 - Commands for state-changing use cases.
 - Ports that describe external needs.
-- Query ports for read access.
-- Repository ports for persistence.
+- Common ports such as repositories and queries.
 - Adapters that implement ports for concrete infrastructure.
 
 The internal file split can vary by size. Ownership matters more than identical folders: context-specific behavior and contracts stay in the context.
@@ -40,7 +43,3 @@ This creates more small files than a simple layer-based layout.
 Bounded-context boundaries require judgment.
 
 `shared/` can become a dumping ground if not curated.
-
-## Links to Related ADRs
-
-- [001. Use Architecture Decision Records](./001-use-adr.md)
