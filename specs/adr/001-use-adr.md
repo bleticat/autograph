@@ -2,41 +2,40 @@
 
 ## Context
 
-This project uses spec-driven development. Some implementation choices will shape future specs, code structure, tooling, data models, and operational behavior. Those decisions need a durable home that is easy to review, reference, and amend without relying on memory or scattered discussion.
+We use spec-driven development. Important decisions need a durable repo-local record near specs and code.
 
 ## Decision
 
-We will record significant architectural and product-shaping decisions as Architecture Decision Records (ADRs) in `specs/adr/`.
+Record architectural and product-shaping decisions as ADRs in `specs/adr/`.
 
-Each ADR must follow these rules:
+Rules:
 
-1. Store every ADR in `specs/adr/`.
-2. Name files with a zero-padded sequence number and a short kebab-case title: `NNN-short-title.md`.
-3. Assign the next unused sequence number. Do not renumber existing ADRs.
-4. Keep each ADR focused on one decision.
-5. Use concise, decision-oriented writing. Capture the reasoning needed by a future maintainer, not every detail from the discussion.
-6. Include only these sections, in this order:
+1. Name files `NNN-short-title.md`.
+2. Use the next unused number. Do not renumber old ADRs.
+3. Keep one decision per ADR.
+4. Use only these sections:
    - `# NNN. Title`
    - `## Context`
    - `## Decision`
    - `## Pros`
    - `## Cons`
    - `## Links to Related ADRs`
-7. Describe how the decision affects specs, implementation, tests, migrations, and operations when relevant.
-8. Prefer linking to related specs, issues, pull requests, code, or external references over copying long source material into the ADR.
-9. Treat ADRs as historical records. Amend them only for typo fixes, broken links, or relationship updates; use a new ADR for changed decisions.
-10. When an ADR replaces or revises another ADR, explain that relationship in `Links to Related ADRs`.
-11. ADRs should be written before or alongside the implementation work they justify.
+5. Mention effects on specs, implementation, tests, migrations, and operations when relevant.
+6. Link related specs, issues, PRs, code, and ADRs instead of copying long material.
+7. Treat ADRs as historical records. Use a new ADR for changed decisions.
 
 ## Pros
 
-Architectural intent will be visible in the repository and can be reviewed together with specs and code. Future contributors will have a stable trail for why important decisions were made, which should reduce repeated debate and accidental reversals.
+Decisions become discoverable and reviewable with the code.
 
-The format is intentionally small, so ADRs stay lightweight enough to write as part of normal feature work.
+The short template keeps ADRs cheap to write and read.
 
 ## Cons
 
-This adds a small documentation step to changes that carry architectural weight. Small implementation details that do not affect the project direction do not need an ADR.
+This adds a documentation step for architectural work.
 
-The reduced template does not track explicit status, date, or alternatives as separate fields. If those details matter for a decision, they must be captured in the main sections.
+There are no separate status, date, or alternatives fields; important nuance must fit the main sections.
 
+## Links to Related ADRs
+
+- None.
